@@ -17,13 +17,14 @@ boost::program_options::options_description Rapidity::GetBoostOptions() {
   options_description desc(GetName() + " options");
   desc.add_options()
       ("tracks-branch", value(&tracks_branch_)->default_value("mdc_vtx_tracks"), "Name of branch with tracks")
+      ("out-branch", value(&out_tracks_branch_)->default_value("mdc_vtx_tracks_rapidity"), "Name of output branch")
       ("pdg-code", value(&pdg_code_)->default_value(2212), "PDG-Code");
   return desc;
 }
 
 void Rapidity::PreInit() {
   SetInputBranchNames({tracks_branch_});
-  SetOutputBranchName("mdc_vtx_tracks_rapidity");
+  SetOutputBranchName({out_tracks_branch_});
 }
 
 void Rapidity::Init(std::map<std::string, void *> &Map) {

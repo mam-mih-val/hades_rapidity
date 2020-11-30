@@ -29,6 +29,7 @@ private:
 int pdg_code_;
 
 std::string tracks_branch_;
+std::string out_tracks_branch_;
 
 AnalysisTree::Particles *tracks_{nullptr};
 AnalysisTree::Particles *rec_particles_{nullptr};
