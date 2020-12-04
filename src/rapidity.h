@@ -35,7 +35,8 @@ AnalysisTree::Particles *tracks_{nullptr};
 AnalysisTree::Particles *rec_particles_{nullptr};
 AnalysisTree::BranchConfig rec_particle_config_;
 
-short y_cm_field_id_;
+short in_charge_id_;
+short out_charge_id_;
 
 TASK_DEF(Rapidity, 0)
 };
