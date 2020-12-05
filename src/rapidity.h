@@ -36,7 +36,9 @@ AnalysisTree::Particles *rec_particles_{nullptr};
 AnalysisTree::BranchConfig rec_particle_config_;
 
 short in_charge_id_;
+short in_chi2_id_;
 short out_charge_id_;
+short out_chi2_id_;
 
 TASK_DEF(Rapidity, 0)
 };

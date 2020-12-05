@@ -32,7 +32,11 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
 
   rec_particle_config_ = AnalysisTree::BranchConfig(out_branch_, AnalysisTree::DetType::kParticle);
   rec_particle_config_.AddField<int>("charge");
+  rec_particle_config_.AddField<float>("chi2");
   out_charge_id_ = rec_particle_config_.GetFieldId("charge");
+  out_chi2_id_ = rec_particle_config_.GetFieldId("chi2");
+
+  in_chi2_id_ = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("chi2");
 
   out_config_->AddBranchConfig(rec_particle_config_);
   rec_particles_ = new AnalysisTree::Particles;
@@ -60,5 +64,9 @@ void Rapidity::Exec() {
     particle->SetMomentum3(track.GetMomentum3());
     particle->SetMass(mass);
     particle->SetPid(pid);
+    if( in_chi2_id_ != -999 ) {
+      auto chi2 = track.GetField<float>(in_chi2_id_);
+      particle->SetField(chi2, out_chi2_id_);
+    }
   }
 }
