@@ -18,7 +18,7 @@ boost::program_options::options_description Rapidity::GetBoostOptions() {
   desc.add_options()
       ("tracks-branch", value(&tracks_branch_)->default_value("mdc_vtx_tracks"), "Name of branch with tracks")
       ("out-branch", value(&out_tracks_branch_)->default_value("mdc_vtx_tracks_rapidity"), "Name of output branch")
-      ("pdg-code", value(&pdg_code_)->default_value(2212), "PDG-Code");
+      ("pdg-code", value(&pdg_code_)->default_value(0), "PDG-Code");
   return desc;
 }
 
@@ -33,40 +33,137 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
   rec_particle_config_ = AnalysisTree::BranchConfig(out_branch_, AnalysisTree::DetType::kParticle);
   rec_particle_config_.AddField<int>("charge");
   rec_particle_config_.AddField<float>("chi2");
+  rec_particle_config_.AddField<float>("dca_xy");
+  rec_particle_config_.AddField<float>("dca_z");
+  rec_particle_config_.AddField<float>("efficiency");
+
   out_charge_id_ = rec_particle_config_.GetFieldId("charge");
-  out_chi2_id_ = rec_particle_config_.GetFieldId("chi2");
+  out_dca_xy_id_ = rec_particle_config_.GetFieldId("dca_xy");
+  out_dca_z_id_ = rec_particle_config_.GetFieldId("dca_z");
+  out_efficiency_id_ = rec_particle_config_.GetFieldId("efficiency");
 
   in_chi2_id_ = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("chi2");
+  in_dca_xy_id_ = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("dca_xy");
+  in_dca_z_id_ = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("dca_z");
 
   out_config_->AddBranchConfig(rec_particle_config_);
   rec_particles_ = new AnalysisTree::Particles;
   out_tree_->Branch(out_branch_.c_str(), &rec_particles_);
+
+  file_efficiency_protons_ = TFile::Open("../../efficiency_files/efficiency_protons.root");
+  file_efficiency_pi_plus_ = TFile::Open("../../efficiency_files/efficiency_pi_plus.root");
+  file_efficiency_pi_minus_ = TFile::Open("../../efficiency_files/efficiency_pi_minus.root");
+  int p=2;
+  while(p<40){
+    efficiency_protons_.emplace_back();
+    efficiency_pi_plus_.emplace_back();
+    efficiency_pi_minus_.emplace_back();
+    std::string name = "efficiency_"+std::to_string(p);
+    file_efficiency_protons_->GetObject(name.c_str(), efficiency_protons_.back());
+    file_efficiency_pi_plus_->GetObject(name.c_str(), efficiency_pi_plus_.back());
+    file_efficiency_pi_minus_->GetObject(name.c_str(), efficiency_pi_minus_.back());
+    p+=5;
+  }
 }
 
 void Rapidity::Exec() {
 
   auto &particle_config = rec_particle_config_;
   rec_particles_->ClearChannels();
-
+  auto n_tracks = tracks_->GetNumberOfChannels();
+  auto centrality_class = GetCentralityClass(n_tracks);
   TLorentzVector momentum;
-  auto mass = TDatabasePDG::Instance()->GetParticle(pdg_code_)->Mass();
   for (int i_track = 0; i_track < tracks_->GetNumberOfChannels(); ++i_track) {
     auto track = tracks_->GetChannel(i_track);
     auto pid = track.GetPid();
     auto charge = TDatabasePDG::Instance()->GetParticle(pid)->Charge();
     if( charge == 0 )
       continue;
-    auto p = track.GetP();
     auto pT = track.GetPt();
-    auto phi = track.GetPhi();
+    auto y = track.GetRapidity();
     auto particle = rec_particles_->AddChannel();
     particle->Init(particle_config);
     particle->SetMomentum3(track.GetMomentum3());
+    float mass;
+    if( pdg_code_ == 0 )
+      mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
+    else
+      mass = TDatabasePDG::Instance()->GetParticle(pdg_code_)->Mass();
     particle->SetMass(mass);
     particle->SetPid(pid);
-    if( in_chi2_id_ != -999 ) {
+    TH2F* efficiency_histogram{nullptr};
+    float efficiency{1.0};
+    try{
+      switch (pid) {
+      case 211:
+        efficiency_histogram = efficiency_pi_plus_.at(centrality_class);
+        break;
+      case -211:
+        efficiency_histogram = efficiency_pi_minus_.at(centrality_class);
+        break;
+      case 2212:
+        efficiency_histogram = efficiency_protons_.at(centrality_class);
+      }
+      if (efficiency_histogram) {
+        auto bin = efficiency_histogram->FindBin(y, pT);
+        efficiency = efficiency_histogram->GetBinContent(bin);
+      }
+    } catch (std::exception&) {}
+    if( efficiency > 0.05 )
+      particle->SetField((float) 1.0 / efficiency, out_efficiency_id_);
+    else
+      particle->SetField(0.0f, out_efficiency_id_);
+    try {
       auto chi2 = track.GetField<float>(in_chi2_id_);
+      auto dca_xy = track.GetField<float>(in_dca_xy_id_);
+      auto dca_z = track.GetField<float>(in_dca_z_id_);
       particle->SetField(chi2, out_chi2_id_);
-    }
+      particle->SetField(dca_xy, out_dca_xy_id_);
+      particle->SetField(dca_z, out_dca_z_id_);
+    } catch (std::exception&) {}
   }
+}
+
+int Rapidity::GetCentralityClass(int multiplicity){
+  if( !centrality_histo_ )
+    InitCentralityHisto();
+  auto bin = centrality_histo_->FindBin(multiplicity);
+  return centrality_histo_->GetBinContent(bin) - 1;
+}
+
+void Rapidity::InitCentralityHisto(){
+  Double_t xAxis[17] = {2, 3, 5, 7, 8, 11, 14, 17, 21, 26, 32, 38, 45, 54, 65, 102, 499};
+  centrality_histo_ = new TH1F("TOFRPC_5pc_fixedCuts__1", "TOFRPC_5pc_fixedCuts", 16, xAxis);
+  centrality_histo_->SetBinContent(1, 15);
+  centrality_histo_->SetBinContent(2, 14);
+  centrality_histo_->SetBinContent(3, 13);
+  centrality_histo_->SetBinContent(4, 12);
+  centrality_histo_->SetBinContent(5, 11);
+  centrality_histo_->SetBinContent(6, 10);
+  centrality_histo_->SetBinContent(7, 9);
+  centrality_histo_->SetBinContent(8, 8);
+  centrality_histo_->SetBinContent(9, 7);
+  centrality_histo_->SetBinContent(10, 6);
+  centrality_histo_->SetBinContent(11, 5);
+  centrality_histo_->SetBinContent(12, 4);
+  centrality_histo_->SetBinContent(13, 3);
+  centrality_histo_->SetBinContent(14, 2);
+  centrality_histo_->SetBinContent(15, 1);
+  centrality_histo_->SetBinError(1, 1.8301);
+  centrality_histo_->SetBinError(2, 5.29551);
+  centrality_histo_->SetBinError(3, 5.07632);
+  centrality_histo_->SetBinError(4, 4.68075);
+  centrality_histo_->SetBinError(5, 4.83154);
+  centrality_histo_->SetBinError(6, 5.30302);
+  centrality_histo_->SetBinError(7, 4.84388);
+  centrality_histo_->SetBinError(8, 5.20623);
+  centrality_histo_->SetBinError(9, 4.82995);
+  centrality_histo_->SetBinError(10, 5.22526);
+  centrality_histo_->SetBinError(11, 4.99358);
+  centrality_histo_->SetBinError(12, 4.83847);
+  centrality_histo_->SetBinError(13, 4.94002);
+  centrality_histo_->SetBinError(14, 5.02256);
+  centrality_histo_->SetBinError(15, 5.08179);
+  centrality_histo_->SetBinError(16, 0.00100254);
+  centrality_histo_->SetEntries(16);
 }
