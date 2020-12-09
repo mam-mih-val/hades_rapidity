@@ -18,6 +18,7 @@ boost::program_options::options_description Rapidity::GetBoostOptions() {
   desc.add_options()
       ("tracks-branch", value(&tracks_branch_)->default_value("mdc_vtx_tracks"), "Name of branch with tracks")
       ("out-branch", value(&out_tracks_branch_)->default_value("mdc_vtx_tracks_rapidity"), "Name of output branch")
+      ("config-directory", value(&config_directory_)->default_value("../../efficiency_files/"), "Path to directory with efficiency")
       ("pdg-code", value(&pdg_code_)->default_value(0), "PDG-Code");
   return desc;
 }
@@ -46,9 +47,13 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
   in_dca_xy_id_ = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("dca_xy");
   in_dca_z_id_ = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("dca_z");
 
-  file_efficiency_protons_ = TFile::Open("../../efficiency_files/efficiency_protons.root", "read");
-  file_efficiency_pi_plus_ = TFile::Open("../../efficiency_files/efficiency_pi_plus.root", "read");
-  file_efficiency_pi_minus_ = TFile::Open("../../efficiency_files/efficiency_pi_minus.root", "read");
+  auto protons_file_name = config_directory_+"/efficiency_protons.root";
+  file_efficiency_protons_ = TFile::Open(protons_file_name.c_str(), "read");
+  auto pi_plus_file_name = config_directory_+"/efficiency_protons.root";
+  file_efficiency_pi_plus_ = TFile::Open(pi_plus_file_name.c_str(), "read");
+  auto pi_minus_file_name = config_directory_+"/efficiency_protons.root";
+  file_efficiency_pi_minus_ = TFile::Open(pi_minus_file_name.c_str(), "read");
+
   int p=2;
   while(p<40){
     efficiency_protons_.emplace_back();

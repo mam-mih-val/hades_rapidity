@@ -51,6 +51,7 @@ private:
 
   TH1F* centrality_histo_{nullptr};
 
+  std::string config_directory_;
   TFile* file_efficiency_protons_{nullptr};
   std::vector<TH2F*> efficiency_protons_;
   TFile* file_efficiency_pi_plus_{nullptr};
