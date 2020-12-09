@@ -46,13 +46,9 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
   in_dca_xy_id_ = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("dca_xy");
   in_dca_z_id_ = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("dca_z");
 
-  out_config_->AddBranchConfig(rec_particle_config_);
-  rec_particles_ = new AnalysisTree::Particles;
-  out_tree_->Branch(out_branch_.c_str(), &rec_particles_);
-
-  file_efficiency_protons_ = TFile::Open("../../efficiency_files/efficiency_protons.root");
-  file_efficiency_pi_plus_ = TFile::Open("../../efficiency_files/efficiency_pi_plus.root");
-  file_efficiency_pi_minus_ = TFile::Open("../../efficiency_files/efficiency_pi_minus.root");
+  file_efficiency_protons_ = TFile::Open("../../efficiency_files/efficiency_protons.root", "read");
+  file_efficiency_pi_plus_ = TFile::Open("../../efficiency_files/efficiency_pi_plus.root", "read");
+  file_efficiency_pi_minus_ = TFile::Open("../../efficiency_files/efficiency_pi_minus.root", "read");
   int p=2;
   while(p<40){
     efficiency_protons_.emplace_back();
@@ -64,6 +60,11 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
     file_efficiency_pi_minus_->GetObject(name.c_str(), efficiency_pi_minus_.back());
     p+=5;
   }
+
+  out_config_->AddBranchConfig(rec_particle_config_);
+  rec_particles_ = new AnalysisTree::Particles;
+  out_tree_->Branch(out_branch_.c_str(), &rec_particles_);
+  out_file_->cd();
 }
 
 void Rapidity::Exec() {
