@@ -79,6 +79,7 @@ void Rapidity::Exec() {
   auto n_tracks = tracks_->GetNumberOfChannels();
   auto centrality_class = GetCentralityClass(n_tracks);
   TLorentzVector momentum;
+  float y_cm{0.74};
   for (int i_track = 0; i_track < tracks_->GetNumberOfChannels(); ++i_track) {
     auto track = tracks_->GetChannel(i_track);
     auto pid = track.GetPid();
@@ -111,7 +112,7 @@ void Rapidity::Exec() {
         efficiency_histogram = efficiency_protons_.at(centrality_class);
       }
       if (efficiency_histogram) {
-        auto bin = efficiency_histogram->FindBin(y, pT);
+        auto bin = efficiency_histogram->FindBin(y-y_cm, pT);
         efficiency = efficiency_histogram->GetBinContent(bin);
       }
     } catch (std::exception&) {}
