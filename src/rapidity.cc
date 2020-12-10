@@ -115,7 +115,7 @@ void Rapidity::Exec() {
         efficiency = efficiency_histogram->GetBinContent(bin);
       }
     } catch (std::exception&) {}
-    if( efficiency > 1e-3 )
+    if( efficiency > 0.1 )
       particle->SetField((float) 1.0 / efficiency, out_efficiency_id_);
     else
       particle->SetField(0.0f, out_efficiency_id_);
