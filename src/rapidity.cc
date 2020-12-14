@@ -60,9 +60,12 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
     efficiency_pi_plus_.emplace_back();
     efficiency_pi_minus_.emplace_back();
     std::string name = "efficiency_"+std::to_string(p);
-    file_efficiency_protons_->GetObject(name.c_str(), efficiency_protons_.back());
-    file_efficiency_pi_plus_->GetObject(name.c_str(), efficiency_pi_plus_.back());
-    file_efficiency_pi_minus_->GetObject(name.c_str(), efficiency_pi_minus_.back());
+    if( file_efficiency_protons_ )
+      file_efficiency_protons_->GetObject(name.c_str(), efficiency_protons_.back());
+    if( file_efficiency_pi_plus_ )
+      file_efficiency_pi_plus_->GetObject(name.c_str(), efficiency_pi_plus_.back());
+    if(file_efficiency_pi_minus_)
+      file_efficiency_pi_minus_->GetObject(name.c_str(), efficiency_pi_minus_.back());
     p+=5;
   }
 
