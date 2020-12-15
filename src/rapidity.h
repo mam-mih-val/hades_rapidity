@@ -48,6 +48,8 @@ private:
   short out_dca_z_id_;
   short out_efficiency_id_;
   short out_chi2_id_;
+  short out_protons_rapidity_;
+  short out_pions_rapidity_;
 
   TH1F* centrality_histo_{nullptr};
 

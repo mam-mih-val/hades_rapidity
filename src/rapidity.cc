@@ -37,11 +37,15 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
   rec_particle_config_.AddField<float>("dca_xy");
   rec_particle_config_.AddField<float>("dca_z");
   rec_particle_config_.AddField<float>("efficiency");
+  rec_particle_config_.AddField<float>("protons_rapidity");
+  rec_particle_config_.AddField<float>("pions_rapidity");
 
   out_charge_id_ = rec_particle_config_.GetFieldId("charge");
   out_dca_xy_id_ = rec_particle_config_.GetFieldId("dca_xy");
   out_dca_z_id_ = rec_particle_config_.GetFieldId("dca_z");
   out_efficiency_id_ = rec_particle_config_.GetFieldId("efficiency");
+  out_protons_rapidity_ = rec_particle_config_.GetFieldId("protons_rapidity");
+  out_pions_rapidity_ = rec_particle_config_.GetFieldId("pions_rapidity");
 
   in_chi2_id_ = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("chi2");
   in_dca_xy_id_ = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("dca_xy");
@@ -83,23 +87,34 @@ void Rapidity::Exec() {
   auto centrality_class = GetCentralityClass(n_tracks);
   TLorentzVector momentum;
   float y_beam_2{0.74};
+  size_t n_recorded=0;
   for (int i_track = 0; i_track < tracks_->GetNumberOfChannels(); ++i_track) {
     auto track = tracks_->GetChannel(i_track);
     auto pid = track.GetPid();
     auto charge = TDatabasePDG::Instance()->GetParticle(pid)->Charge();
-    if( charge == 0 )
+    if( charge == 0 && pid != 0 ) {
       continue;
+    }
+    n_recorded++;
     auto pT = track.GetPt();
+    auto p = track.GetP();
+    auto pz = track.GetPz();
     auto y = track.GetRapidity();
     auto y_cm = y-y_beam_2;
+    auto mass = track.GetMass();
+    if( pid != 0 )
+      mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
     auto particle = rec_particles_->AddChannel();
     particle->Init(particle_config);
+    auto mass_protons = TDatabasePDG::Instance()->GetParticle(2212)->Mass();
+    auto E_protons = sqrt( p*p + mass_protons*mass_protons );
+    float y_protons = 0.5 * ( log( E_protons + pz ) - log( E_protons - pz ) );
+    particle->SetField(y_protons, out_protons_rapidity_);
+    auto mass_pions = TDatabasePDG::Instance()->GetParticle(211)->Mass();
+    auto E_pions = sqrt( p*p + mass_pions*mass_pions );
+    float y_pions = 0.5 * ( log( E_pions + pz ) - log( E_pions - pz ) );
+    particle->SetField(y_pions, out_pions_rapidity_);
     particle->SetMomentum3(track.GetMomentum3());
-    float mass;
-    if( pdg_code_ == 0 )
-      mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
-    else
-      mass = TDatabasePDG::Instance()->GetParticle(pdg_code_)->Mass();
     particle->SetMass(mass);
     particle->SetPid(pid);
     TH2F* efficiency_histogram{nullptr};
