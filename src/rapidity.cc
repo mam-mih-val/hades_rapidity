@@ -49,9 +49,9 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
 
   auto protons_file_name = config_directory_+"/efficiency_protons.root";
   file_efficiency_protons_ = TFile::Open(protons_file_name.c_str(), "read");
-  auto pi_plus_file_name = config_directory_+"/efficiency_protons.root";
+  auto pi_plus_file_name = config_directory_+"/efficiency_pi_plus.root";
   file_efficiency_pi_plus_ = TFile::Open(pi_plus_file_name.c_str(), "read");
-  auto pi_minus_file_name = config_directory_+"/efficiency_protons.root";
+  auto pi_minus_file_name = config_directory_+"/efficiency_pi_minus.root";
   file_efficiency_pi_minus_ = TFile::Open(pi_minus_file_name.c_str(), "read");
 
   int p=2;
@@ -82,7 +82,7 @@ void Rapidity::Exec() {
   auto n_tracks = tracks_->GetNumberOfChannels();
   auto centrality_class = GetCentralityClass(n_tracks);
   TLorentzVector momentum;
-  float y_cm{0.74};
+  float y_beam_2{0.74};
   for (int i_track = 0; i_track < tracks_->GetNumberOfChannels(); ++i_track) {
     auto track = tracks_->GetChannel(i_track);
     auto pid = track.GetPid();
@@ -91,6 +91,7 @@ void Rapidity::Exec() {
       continue;
     auto pT = track.GetPt();
     auto y = track.GetRapidity();
+    auto y_cm = y-y_beam_2;
     auto particle = rec_particles_->AddChannel();
     particle->Init(particle_config);
     particle->SetMomentum3(track.GetMomentum3());
@@ -113,10 +114,12 @@ void Rapidity::Exec() {
         break;
       case 2212:
         efficiency_histogram = efficiency_protons_.at(centrality_class);
+        break;
       }
       if (efficiency_histogram) {
-        auto bin = efficiency_histogram->FindBin(y-y_cm, pT);
-        efficiency = efficiency_histogram->GetBinContent(bin);
+        auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_cm);
+        auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
+        efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
       }
     } catch (std::exception&) {}
     if( efficiency > 0.1 )
