@@ -11,6 +11,7 @@
 #include <AnalysisTree/Detector.hpp>
 #include <TH1F.h>
 #include <TH2F.h>
+#include <TH3F.h>
 #include <at_task/Task.h>
 #include <memory>
 #include <string>
@@ -28,7 +29,21 @@ public:
   }
 
 private:
-
+  size_t WhatSector( double phi ){
+    if( 0.0 < phi && phi < M_PI/3.0 )
+      return 0;
+    if( M_PI/3.0 < phi && phi < 2.0*M_PI/3.0 )
+      return 1;
+    if( 2*M_PI/3.0 < phi && phi < M_PI )
+      return 2;
+    if( -M_PI < phi && phi < -2*M_PI/3.0 )
+      return 3;
+    if( -2*M_PI/3.0 < phi && phi < -M_PI/3.0 )
+      return 4;
+    if( -M_PI/3.0 < phi && phi < 0.0 )
+      return 5;
+    return -1;
+  }
   int GetCentralityClass(int multiplicity);
   void InitCentralityHisto();
   int pdg_code_;
@@ -56,6 +71,7 @@ private:
   std::string config_directory_;
   TFile* file_efficiency_protons_{nullptr};
   std::vector<TH2F*> efficiency_protons_;
+  TH3F* efficiency_protons_sectors_{nullptr};
   TFile* file_efficiency_pi_plus_{nullptr};
   std::vector<TH2F*> efficiency_pi_plus_;
   TFile* file_efficiency_pi_minus_{nullptr};

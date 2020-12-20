@@ -57,7 +57,8 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
   file_efficiency_pi_plus_ = TFile::Open(pi_plus_file_name.c_str(), "read");
   auto pi_minus_file_name = config_directory_+"/efficiency_pi_minus.root";
   file_efficiency_pi_minus_ = TFile::Open(pi_minus_file_name.c_str(), "read");
-
+  if( file_efficiency_protons_ )
+    file_efficiency_protons_->GetObject("efficiency_pT_y_n_tacks_sector", efficiency_protons_sectors_);
   int p=2;
   while(p<40){
     efficiency_protons_.emplace_back();
@@ -88,6 +89,15 @@ void Rapidity::Exec() {
   TLorentzVector momentum;
   float y_beam_2{0.74};
   size_t n_recorded=0;
+  std::vector n_tracks_sectors{0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  int n_reco_tracks = tracks_->GetNumberOfChannels();
+  for( int i = 0; i < n_reco_tracks; ++i ){
+    auto r_track = tracks_->GetChannel(i);
+    auto sector = WhatSector( r_track.GetPhi() );
+    try {
+      n_tracks_sectors.at(sector)++;
+    } catch (std::exception&) {}
+  }
   for (int i_track = 0; i_track < tracks_->GetNumberOfChannels(); ++i_track) {
     auto track = tracks_->GetChannel(i_track);
     auto pid = track.GetPid();
@@ -137,6 +147,16 @@ void Rapidity::Exec() {
         efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
       }
     } catch (std::exception&) {}
+    if( pid == 2212 && efficiency_protons_sectors_ ){
+      auto sector = WhatSector(track.GetPhi());
+      try{
+        auto n_tacks = n_tracks_sectors.at(sector);
+        auto bin = efficiency_protons_sectors_->FindBin( y_cm, pT, n_tacks );
+        efficiency = efficiency_protons_sectors_->GetBinContent( bin );
+      } catch (std::exception&) {
+        efficiency=1.0;
+      }
+    }
     if( efficiency > 0.1 )
       particle->SetField((float) 1.0 / efficiency, out_efficiency_id_);
     else
