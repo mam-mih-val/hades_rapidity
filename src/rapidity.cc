@@ -92,7 +92,13 @@ void Rapidity::Exec() {
   for (int i_track = 0; i_track < tracks_->GetNumberOfChannels(); ++i_track) {
     auto track = tracks_->GetChannel(i_track);
     auto pid = track.GetPid();
-    auto charge = TDatabasePDG::Instance()->GetParticle(pid)->Charge();
+    float charge{0.0};
+    if( pid > 1e8 ){
+      charge = (int)(pid / 1E+4) % (int)1e+3;
+    }
+    else {
+      charge = TDatabasePDG::Instance()->GetParticle(pid)->Charge()*3;
+    }
     if( charge == 0 && pid != 0 ) {
       continue;
     }
@@ -103,8 +109,12 @@ void Rapidity::Exec() {
     auto y = track.GetRapidity();
     auto y_cm = y-y_beam_2;
     auto mass = track.GetMass();
-    if( pid != 0 )
-      mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
+    if( pid != 0 ) {
+      if( TDatabasePDG::Instance()->GetParticle(pid) )
+        mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
+      else
+        mass = track.GetMass();
+    }
     auto particle = rec_particles_->AddChannel();
     particle->Init(particle_config);
     auto mass_protons = TDatabasePDG::Instance()->GetParticle(2212)->Mass();
