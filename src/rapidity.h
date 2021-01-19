@@ -44,6 +44,7 @@ private:
       return 5;
     return -1;
   }
+  std::array<int, 6> CalcSectorsOccupancy();
   int GetCentralityClass(int multiplicity);
   void InitCentralityHisto();
   int pdg_code_;
@@ -69,13 +70,9 @@ private:
   TH1F* centrality_histo_{nullptr};
 
   std::string config_directory_;
-  TFile* file_efficiency_protons_{nullptr};
-  std::vector<TH2F*> efficiency_protons_;
-  TH3F* efficiency_protons_sectors_{nullptr};
-  TFile* file_efficiency_pi_plus_{nullptr};
-  std::vector<TH2F*> efficiency_pi_plus_;
-  TFile* file_efficiency_pi_minus_{nullptr};
-  std::vector<TH2F*> efficiency_pi_minus_;
+  TFile* file_occupancy_protons_{nullptr};
+  TH2F* protons_slope_{nullptr};
+  TH2F* protons_offset_{nullptr};
 
 TASK_DEF(Rapidity, 0)
 };

@@ -51,33 +51,30 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
   in_dca_xy_id_ = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("dca_xy");
   in_dca_z_id_ = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("dca_z");
 
-  auto protons_file_name = config_directory_+"/efficiency_protons.root";
-  file_efficiency_protons_ = TFile::Open(protons_file_name.c_str(), "read");
-  auto pi_plus_file_name = config_directory_+"/efficiency_pi_plus.root";
-  file_efficiency_pi_plus_ = TFile::Open(pi_plus_file_name.c_str(), "read");
-  auto pi_minus_file_name = config_directory_+"/efficiency_pi_minus.root";
-  file_efficiency_pi_minus_ = TFile::Open(pi_minus_file_name.c_str(), "read");
-  if( file_efficiency_protons_ )
-    file_efficiency_protons_->GetObject("efficiency_pT_y_n_tacks_sector", efficiency_protons_sectors_);
-  int p=2;
-  while(p<40){
-    efficiency_protons_.emplace_back();
-    efficiency_pi_plus_.emplace_back();
-    efficiency_pi_minus_.emplace_back();
-    std::string name = "efficiency_"+std::to_string(p);
-    if( file_efficiency_protons_ )
-      file_efficiency_protons_->GetObject(name.c_str(), efficiency_protons_.back());
-    if( file_efficiency_pi_plus_ )
-      file_efficiency_pi_plus_->GetObject(name.c_str(), efficiency_pi_plus_.back());
-    if(file_efficiency_pi_minus_)
-      file_efficiency_pi_minus_->GetObject(name.c_str(), efficiency_pi_minus_.back());
-    p+=5;
-  }
+  auto protons_file_name = config_directory_+"/occupancy_protons.root";
+  file_occupancy_protons_ = TFile::Open(protons_file_name.c_str());
+  file_occupancy_protons_->GetObject("efficiency_slope", protons_slope_);
+  file_occupancy_protons_->GetObject("efficiency_offset", protons_offset_);
 
   out_config_->AddBranchConfig(rec_particle_config_);
   rec_particles_ = new AnalysisTree::Particles;
   out_tree_->Branch(out_branch_.c_str(), &rec_particles_);
   out_file_->cd();
+}
+
+std::array<int, 6> Rapidity::CalcSectorsOccupancy(){
+  std::array<int, 6> sectors_occupancy{};
+  for( auto& n : sectors_occupancy )
+    n=0;
+  for (int i_track = 0; i_track < tracks_->GetNumberOfChannels(); ++i_track) {
+    auto track = tracks_->GetChannel(i_track);
+    auto phi = track.GetPhi();
+    auto sector = WhatSector(phi);
+    try {
+      sectors_occupancy.at(sector) += 1;
+    } catch (std::out_of_range&) {}
+  }
+  return sectors_occupancy;
 }
 
 void Rapidity::Exec() {
@@ -89,6 +86,7 @@ void Rapidity::Exec() {
   TLorentzVector momentum;
   float y_beam_2{0.74};
   size_t n_recorded=0;
+  auto sectors_occupancy = CalcSectorsOccupancy();
   for (int i_track = 0; i_track < tracks_->GetNumberOfChannels(); ++i_track) {
     auto track = tracks_->GetChannel(i_track);
     auto pid = track.GetPid();
@@ -109,6 +107,8 @@ void Rapidity::Exec() {
     auto y = track.GetRapidity();
     auto y_cm = y-y_beam_2;
     auto mass = track.GetMass();
+    auto phi = track.GetPhi();
+    auto sector = WhatSector(phi);
     if( pid != 0 ) {
       if( TDatabasePDG::Instance()->GetParticle(pid) )
         mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
@@ -128,32 +128,30 @@ void Rapidity::Exec() {
     particle->SetMomentum3(track.GetMomentum3());
     particle->SetMass(mass);
     particle->SetPid(pid);
-    TH2F* efficiency_histogram{nullptr};
+    TH2F* slope_histogram{nullptr};
+    TH2F* offset_histogram{nullptr};
     float efficiency{1.0};
-    try{
-      switch (pid) {
-      case 211:
-        efficiency_histogram = efficiency_pi_plus_.at(centrality_class);
-        break;
-      case -211:
-        efficiency_histogram = efficiency_pi_minus_.at(centrality_class);
-        break;
-      case 2212:
-        efficiency_histogram = efficiency_protons_.at(centrality_class);
-        break;
-      case 0:
-        efficiency = 0.0;
-      }
-      if (efficiency_histogram) {
-        auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_cm);
-        auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
-        efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
-      }
-    } catch (std::exception&) {}
-    if( efficiency > 0.5 )
-      particle->SetField((float) 1.0 / efficiency, out_efficiency_id_);
-    else
-      particle->SetField(0.0f, out_efficiency_id_);
+    switch (pid) {
+    case 2212:
+      slope_histogram = protons_slope_;
+      offset_histogram = protons_offset_;
+      break;
+    }
+    if (slope_histogram && offset_histogram) {
+      auto bin_y = slope_histogram->GetXaxis()->FindBin(y_cm);
+      auto bin_pT = slope_histogram->GetYaxis()->FindBin(pT);
+      auto slope = slope_histogram->GetBinContent(bin_y, bin_pT);
+      auto offset = offset_histogram->GetBinContent(bin_y, bin_pT);
+      try {
+        auto occupancy = sectors_occupancy.at(sector);
+        efficiency = offset + slope*occupancy;
+        if( offset < 0.1 )
+          efficiency=0.0;
+      } catch (std::out_of_range&) {}
+    }
+
+    particle->SetField((float) 1.0 / efficiency, out_efficiency_id_);
+    particle->SetField(0.0f, out_efficiency_id_);
     try {
       auto chi2 = track.GetField<float>(in_chi2_id_);
       auto dca_xy = track.GetField<float>(in_dca_xy_id_);
