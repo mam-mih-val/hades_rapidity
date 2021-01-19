@@ -149,9 +149,10 @@ void Rapidity::Exec() {
           efficiency=0.0;
       } catch (std::out_of_range&) {}
     }
-
-    particle->SetField((float) 1.0 / efficiency, out_efficiency_id_);
-    particle->SetField(0.0f, out_efficiency_id_);
+    if ( fabs(efficiency) > 1e-3 )
+      particle->SetField((float) 1.0 / efficiency, out_efficiency_id_);
+    else
+      particle->SetField(0.0f, out_efficiency_id_);
     try {
       auto chi2 = track.GetField<float>(in_chi2_id_);
       auto dca_xy = track.GetField<float>(in_dca_xy_id_);
