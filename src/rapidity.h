@@ -71,8 +71,10 @@ private:
 
   std::string config_directory_;
   TFile* file_occupancy_protons_{nullptr};
-  TH2F* protons_slope_{nullptr};
-  TH2F* protons_offset_{nullptr};
+  TH2F* protons_par0_{nullptr};
+  TH2F* protons_par1_{nullptr};
+  TH2F* protons_par2_{nullptr};
+  TH2F* protons_par3_{nullptr};
 
 TASK_DEF(Rapidity, 0)
 };

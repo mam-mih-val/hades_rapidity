@@ -53,8 +53,10 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
 
   auto protons_file_name = config_directory_+"/occupancy_protons.root";
   file_occupancy_protons_ = TFile::Open(protons_file_name.c_str());
-  file_occupancy_protons_->GetObject("efficiency_slope", protons_slope_);
-  file_occupancy_protons_->GetObject("efficiency_offset", protons_offset_);
+  file_occupancy_protons_->GetObject("par0", protons_par0_);
+  file_occupancy_protons_->GetObject("par1", protons_par1_);
+  file_occupancy_protons_->GetObject("par2", protons_par2_);
+  file_occupancy_protons_->GetObject("par3", protons_par3_);
 
   out_config_->AddBranchConfig(rec_particle_config_);
   rec_particles_ = new AnalysisTree::Particles;
@@ -128,28 +130,36 @@ void Rapidity::Exec() {
     particle->SetMomentum3(track.GetMomentum3());
     particle->SetMass(mass);
     particle->SetPid(pid);
-    TH2F* slope_histogram{nullptr};
-    TH2F* offset_histogram{nullptr};
+    TH2F*par0_histo{nullptr};
+    TH2F*par1_histo{nullptr};
+    TH2F*par2_histo{nullptr};
+    TH2F*par3_histo{nullptr};
     float efficiency{1.0};
     switch (pid) {
     case 2212:
-      slope_histogram = protons_slope_;
-      offset_histogram = protons_offset_;
+      par0_histo = protons_par0_;
+      par1_histo = protons_par1_;
+      par2_histo = protons_par2_;
+      par3_histo = protons_par3_;
       break;
     }
-    if (slope_histogram && offset_histogram) {
-      auto bin_y = slope_histogram->GetXaxis()->FindBin(y_cm);
-      auto bin_pT = slope_histogram->GetYaxis()->FindBin(pT);
-      auto slope = slope_histogram->GetBinContent(bin_y, bin_pT);
-      auto offset = offset_histogram->GetBinContent(bin_y, bin_pT);
+    if (par1_histo && par0_histo &&
+        par2_histo && par3_histo) {
+      auto bin_y = par1_histo->GetXaxis()->FindBin(y_protons-y_beam_2);
+      auto bin_pT = par1_histo->GetYaxis()->FindBin(pT);
+      auto par0 = par0_histo->GetBinContent(bin_y, bin_pT);
+      auto par1 = par1_histo->GetBinContent(bin_y, bin_pT);
+      auto par2 = par2_histo->GetBinContent(bin_y, bin_pT);
+      auto par3 = par3_histo->GetBinContent(bin_y, bin_pT);
       try {
-        auto occupancy = sectors_occupancy.at(sector);
-//        efficiency = offset + slope*occupancy;
-        efficiency = offset;
-        if( offset < 0.1 )
-          efficiency=0.0;
+        auto N = sectors_occupancy.at(sector);
+//        auto efficiency_lin = par0 + par1* N;
+        efficiency = par0 + par1*N + par2*N*N + par3*N*N*N;
+//        efficiency = par0;
+//        if(par0 < 0.1 )
+//          efficiency=0.0;
       } catch (std::out_of_range&) {
-
+        efficiency=0.0;
       }
     }
     if ( fabs(efficiency) > 1e-3 )
