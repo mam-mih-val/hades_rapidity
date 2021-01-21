@@ -144,10 +144,13 @@ void Rapidity::Exec() {
       auto offset = offset_histogram->GetBinContent(bin_y, bin_pT);
       try {
         auto occupancy = sectors_occupancy.at(sector);
-        efficiency = offset + slope*occupancy;
+//        efficiency = offset + slope*occupancy;
+        efficiency = offset;
         if( offset < 0.1 )
           efficiency=0.0;
-      } catch (std::out_of_range&) {}
+      } catch (std::out_of_range&) {
+
+      }
     }
     if ( fabs(efficiency) > 1e-3 )
       particle->SetField((float) 1.0 / efficiency, out_efficiency_id_);
