@@ -162,7 +162,7 @@ void Rapidity::Exec() {
         efficiency=0.0;
       }
     }
-    if ( fabs(efficiency) > 1e-3 )
+    if ( fabs(efficiency) > 0.1 )
       particle->SetField((float) 1.0 / efficiency, out_efficiency_id_);
     else
       particle->SetField(0.0f, out_efficiency_id_);
