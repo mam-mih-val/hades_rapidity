@@ -34,6 +34,7 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
 
   rec_particle_config_ = AnalysisTree::BranchConfig(out_branch_, AnalysisTree::DetType::kParticle);
 
+  rec_particle_config_.AddField<bool>("is_primary");
   rec_particle_config_.AddField<float>("charge");
   rec_particle_config_.AddField<float>("y_cm");
   rec_particle_config_.AddField<float>("chi2");
@@ -61,6 +62,7 @@ void Rapidity::Exec() {
   float y_beam_2{0.74};
   size_t n_recorded=0;
 
+  auto out_is_primary_id = rec_particle_config_.GetFieldId("is_primary");
   auto out_charge_id = rec_particle_config_.GetFieldId("charge");
   auto out_y_cm_id = rec_particle_config_.GetFieldId("y_cm");
   auto out_chi2_id = rec_particle_config_.GetFieldId("chi2");
@@ -70,6 +72,7 @@ void Rapidity::Exec() {
   auto out_protons_rapidity = rec_particle_config_.GetFieldId("protons_rapidity");
   auto out_pions_rapidity = rec_particle_config_.GetFieldId("pions_rapidity");
 
+  auto in_is_primary = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("is_primary");
   auto in_geant_pid = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("geant_pid");
   auto in_chi2_id = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("chi2");
   auto in_dca_xy_id = config_->GetBranchConfig( tracks_branch_ ).GetFieldId("dca_xy");
@@ -143,6 +146,10 @@ void Rapidity::Exec() {
       particle->SetField((float) 1.0 / efficiency, out_efficiency_id);
     else
       particle->SetField(0.0f, out_efficiency_id);
+    try {
+      auto is_primary = track.GetField<bool>(in_is_primary);
+      particle->SetField(is_primary, out_is_primary_id);
+    } catch (std::exception&) {}
     try {
       auto chi2 = track.GetField<float>(in_chi2_id);
       auto dca_xy = track.GetField<float>(in_dca_xy_id);
