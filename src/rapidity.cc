@@ -31,20 +31,18 @@ void Rapidity::PreInit() {
 void Rapidity::Init(std::map<std::string, void *> &Map) {
   tracks_ = static_cast<AnalysisTree::Particles*>(Map.at(tracks_branch_));
   event_header_ = static_cast<AnalysisTree::EventHeader*>(Map.at("event_header"));
+  ReadEfficiencyHistos();
 
   rec_particle_config_ = AnalysisTree::BranchConfig(out_branch_, AnalysisTree::DetType::kParticle);
-
   rec_particle_config_.AddField<bool>("is_primary");
   rec_particle_config_.AddField<float>("charge");
-  rec_particle_config_.AddField<float>("y_cm");
+  rec_particle_config_.AddField<float>("ycm");
   rec_particle_config_.AddField<float>("chi2");
   rec_particle_config_.AddField<float>("dca_xy");
   rec_particle_config_.AddField<float>("dca_z");
   rec_particle_config_.AddField<float>("efficiency");
   rec_particle_config_.AddField<float>("protons_rapidity");
   rec_particle_config_.AddField<float>("pions_rapidity");
-
-  ReadEfficiencyHistos();
 
   out_config_->AddBranchConfig(rec_particle_config_);
   rec_particles_ = new AnalysisTree::Particles;
@@ -59,12 +57,12 @@ void Rapidity::Exec() {
   auto centrality = event_header_->GetField<float>(
       config_->GetBranchConfig( "event_header" ).GetFieldId("selected_tof_rpc_hits_centrality"));
   auto centrality_class = (size_t) ( (centrality-2.5)/5.0 );
-  float y_beam_2{0.74};
+  float y_beam_2 = data_header_->GetBeamRapidity();
   size_t n_recorded=0;
 
   auto out_is_primary_id = rec_particle_config_.GetFieldId("is_primary");
   auto out_charge_id = rec_particle_config_.GetFieldId("charge");
-  auto out_y_cm_id = rec_particle_config_.GetFieldId("y_cm");
+  auto out_y_cm_id = rec_particle_config_.GetFieldId("ycm");
   auto out_chi2_id = rec_particle_config_.GetFieldId("chi2");
   auto out_dca_xy_id = rec_particle_config_.GetFieldId("dca_xy");
   auto out_dca_z_id = rec_particle_config_.GetFieldId("dca_z");
@@ -120,6 +118,7 @@ void Rapidity::Exec() {
     particle->SetMomentum3(track.GetMomentum3());
     particle->SetMass(mass);
     particle->SetPid(pid);
+    particle->SetField(y_cm, out_y_cm_id);
     TH2F* efficiency_histogram{nullptr};
     float efficiency{1.0};
     try{
