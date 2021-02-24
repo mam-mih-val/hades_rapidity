@@ -161,7 +161,7 @@ void Rapidity::Exec() {
 }
 
 void Rapidity::ReadEfficiencyHistos(){
-  auto protons_file_name = config_directory_+"/efficiency_protons.root";
+  auto protons_file_name = config_directory_+"/efficiency_protons_botvina.root";
   file_efficiency_protons_ = TFile::Open(protons_file_name.c_str(), "read");
   auto pi_plus_file_name = config_directory_+"/efficiency_pi_plus.root";
   file_efficiency_pi_plus_ = TFile::Open(pi_plus_file_name.c_str(), "read");
