@@ -35,6 +35,7 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
 
   rec_particle_config_ = AnalysisTree::BranchConfig(out_branch_, AnalysisTree::DetType::kParticle);
   rec_particle_config_.AddField<bool>("is_primary");
+  rec_particle_config_.AddField<bool>("is_pion");
   rec_particle_config_.AddField<float>("charge");
   rec_particle_config_.AddField<float>("ycm");
   rec_particle_config_.AddField<float>("chi2");
@@ -61,6 +62,7 @@ void Rapidity::Exec() {
   size_t n_recorded=0;
 
   auto out_is_primary_id = rec_particle_config_.GetFieldId("is_primary");
+  auto out_is_pion = rec_particle_config_.GetFieldId("is_pion");
   auto out_charge_id = rec_particle_config_.GetFieldId("charge");
   auto out_y_cm_id = rec_particle_config_.GetFieldId("ycm");
   auto out_chi2_id = rec_particle_config_.GetFieldId("chi2");
@@ -119,6 +121,8 @@ void Rapidity::Exec() {
     particle->SetMass(mass);
     particle->SetPid(pid);
     particle->SetField(y_cm, out_y_cm_id);
+    auto is_pion = abs(pid) == 211;
+    particle->SetField( is_pion, out_is_pion );
     TH2F* efficiency_histogram{nullptr};
     float efficiency{1.0};
     try{
