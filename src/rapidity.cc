@@ -97,19 +97,18 @@ void Rapidity::Exec() {
     }
     particle->SetField(charge, out_charge_id);
     n_recorded++;
-    auto mass = track.GetMass();
-    auto mom4 = pid != 0 ? track.Get4Momentum(pid) : track.Get4MomentumByMass(mass);
     auto pT = track.GetPt();
     auto p = track.GetP();
     auto pz = track.GetPz();
-    float y = mom4.Rapidity();
-    float y_cm = y-y_beam_2;
+    auto mass = track.GetMass();
     if( pid != 0 ) {
       if( TDatabasePDG::Instance()->GetParticle(pid) )
         mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
       else
         mass = track.GetMass();
     }
+    float y = track.GetRapidityByMass(mass);
+    float y_cm = y-y_beam_2;
     auto mass_protons = TDatabasePDG::Instance()->GetParticle(2212)->Mass();
     auto E_protons = sqrt( p*p + mass_protons*mass_protons );
     float y_protons = 0.5 * ( log( E_protons + pz ) - log( E_protons - pz ) );
