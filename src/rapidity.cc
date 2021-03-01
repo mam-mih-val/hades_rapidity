@@ -102,8 +102,8 @@ void Rapidity::Exec() {
     auto pT = track.GetPt();
     auto p = track.GetP();
     auto pz = track.GetPz();
-    auto y = mom4.Rapidity();
-    auto y_cm = y-y_beam_2;
+    float y = mom4.Rapidity();
+    float y_cm = y-y_beam_2;
     if( pid != 0 ) {
       if( TDatabasePDG::Instance()->GetParticle(pid) )
         mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
