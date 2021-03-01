@@ -97,12 +97,13 @@ void Rapidity::Exec() {
     }
     particle->SetField(charge, out_charge_id);
     n_recorded++;
+    auto mass = track.GetMass();
+    auto mom4 = pid != 0 ? track.Get4Momentum(pid) : track.Get4MomentumByMass(mass);
     auto pT = track.GetPt();
     auto p = track.GetP();
     auto pz = track.GetPz();
-    auto y = track.GetRapidity();
+    auto y = mom4.Rapidity();
     auto y_cm = y-y_beam_2;
-    auto mass = track.GetMass();
     if( pid != 0 ) {
       if( TDatabasePDG::Instance()->GetParticle(pid) )
         mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
