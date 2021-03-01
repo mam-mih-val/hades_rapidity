@@ -28,7 +28,7 @@ void Rapidity::PreInit() {
   SetOutputBranchName({out_tracks_branch_});
 }
 
-void Rapidity::Init(std::map<std::string, void *> &Map) {
+void Rapidity::UserInit(std::map<std::string, void *> &Map) {
   tracks_ = static_cast<AnalysisTree::Particles*>(Map.at(tracks_branch_));
   event_header_ = static_cast<AnalysisTree::EventHeader*>(Map.at("event_header"));
   ReadEfficiencyHistos();
@@ -51,7 +51,7 @@ void Rapidity::Init(std::map<std::string, void *> &Map) {
   out_file_->cd();
 }
 
-void Rapidity::Exec() {
+void Rapidity::UserExec() {
   auto &particle_config = rec_particle_config_;
   rec_particles_->ClearChannels();
   auto n_tracks = tracks_->GetNumberOfChannels();

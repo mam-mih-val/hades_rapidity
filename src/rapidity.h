@@ -8,21 +8,26 @@
 #include <TFile.h>
 #include <TTree.h>
 
+#include <at_task/UserTask.h>
+#include <at_task/Task.h>
+
+#include <AnalysisTree/Matching.hpp>
 #include <AnalysisTree/Detector.hpp>
+#include <AnalysisTree/Particle.hpp>
+#include <AnalysisTree/BranchConfig.hpp>
 #include <AnalysisTree/EventHeader.hpp>
+
 #include <TH1F.h>
 #include <TH2F.h>
-#include <TH3F.h>
-#include <at_task/Task.h>
 #include <memory>
 #include <string>
 
 class Rapidity : public UserFillTask {
 
 public:
-  void Init(std::map<std::string, void *> &Map) override;
-  void Exec() override;
-  void Finish() override {}
+  void UserInit(std::map<std::string, void *> &Map) override;
+  void UserExec() override;
+  void UserFinish() override {}
   boost::program_options::options_description GetBoostOptions() override;
   void PreInit() override;
   void PostFinish() override {
