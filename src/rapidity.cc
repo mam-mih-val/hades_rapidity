@@ -83,10 +83,6 @@ void Rapidity::UserExec() {
     auto particle = rec_particles_->AddChannel();
     particle->Init(particle_config);
     auto pid = track.GetPid();
-    float new_mass{0.0};
-    try {
-      new_mass = AnalysisTree::GetMassByPdgId(pid);
-    } catch (std::exception&) {}
     auto geant_code = track.GetField<int>(in_geant_pid);
     float charge{0};
     if( pid > 1e8 ){
