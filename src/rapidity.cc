@@ -18,7 +18,7 @@ boost::program_options::options_description Rapidity::GetBoostOptions() {
   desc.add_options()
       ("tracks-branch", value(&tracks_branch_)->default_value("mdc_vtx_tracks"), "Name of branch with tracks")
       ("out-branch", value(&out_tracks_branch_)->default_value("mdc_vtx_tracks_rapidity"), "Name of output branch")
-      ("config-directory", value(&config_directory_)->default_value("../../efficiency_files/"), "Path to directory with efficiency")
+      ("efficiency-file", value(&config_directory_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to efficiency file")
       ("pdg-code", value(&pdg_code_)->default_value(0), "PDG-Code");
   return desc;
 }
@@ -82,8 +82,11 @@ void Rapidity::UserExec() {
     auto track = tracks_->GetChannel(i_track);
     auto particle = rec_particles_->AddChannel();
     particle->Init(particle_config);
-
     auto pid = track.GetPid();
+    float new_mass{0.0};
+    try {
+      new_mass = AnalysisTree::GetMassByPdgId(pid);
+    } catch (std::exception&) {}
     auto geant_code = track.GetField<int>(in_geant_pid);
     float charge{0};
     if( pid > 1e8 ){
@@ -165,7 +168,7 @@ void Rapidity::UserExec() {
 }
 
 void Rapidity::ReadEfficiencyHistos(){
-  auto protons_file_name = config_directory_+"/efficiency_protons_botvina.root";
+  auto protons_file_name = config_directory_;
   file_efficiency_protons_ = TFile::Open(protons_file_name.c_str(), "read");
   auto pi_plus_file_name = config_directory_+"/efficiency_pi_plus.root";
   file_efficiency_pi_plus_ = TFile::Open(pi_plus_file_name.c_str(), "read");
