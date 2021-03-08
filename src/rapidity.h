@@ -34,6 +34,9 @@ public:
     UserTask::PostFinish();
   }
 
+protected:
+  virtual bool UseATI2() const override;
+
 private:
   void ReadEfficiencyHistos();
   int pdg_code_;

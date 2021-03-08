@@ -185,3 +185,4 @@ void Rapidity::ReadEfficiencyHistos(){
     p+=5;
   }
 }
+bool Rapidity::UseATI2() const { return false; }
