@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(Rapidity)
+project(flow_preprocessing)
 
 set(CMAKE_CXX_STANDARD 17)
 

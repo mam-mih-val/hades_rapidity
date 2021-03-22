@@ -22,7 +22,7 @@
 #include <memory>
 #include <string>
 
-class Rapidity : public UserFillTask {
+class TracksProcessor : public UserFillTask {
 
 public:
   void UserInit(std::map<std::string, void *> &Map) override;
@@ -35,21 +35,31 @@ public:
   }
 
 protected:
-  virtual bool UseATI2() const override;
+//  virtual bool UseATI2() const override;
 
 private:
   void ReadEfficiencyHistos();
-  int pdg_code_;
+  bool is_mc_=true;
 
-  std::string tracks_branch_;
   std::string out_tracks_branch_;
 
-  AnalysisTree::EventHeader *event_header_{nullptr};
-  AnalysisTree::Particles *tracks_{nullptr};
-  AnalysisTree::Particles *rec_particles_{nullptr};
-  AnalysisTree::BranchConfig rec_particle_config_;
+  ATI2::Branch *event_header_{nullptr};
+  ATI2::Variable centrality_var_;
 
-  TH1F* centrality_histo_{nullptr};
+  ATI2::Branch *in_tracks_{nullptr};
+  ATI2::Branch *out_tracks_{nullptr};
+  ATI2::Variable out_ycm_var_;
+  ATI2::Variable out_abs_ycm_var_;
+  ATI2::Variable out_efficiency_var_;
+  ATI2::Variable out_protons_rapidity_var_;
+  ATI2::Variable out_pions_rapidity_var_;
+
+  ATI2::Branch *in_sim_particles_{nullptr};
+  ATI2::Branch *out_sim_particles_{nullptr};
+  ATI2::Variable out_sim_ycm_var_;
+  ATI2::Variable out_sim_abs_ycm_var_;
+  ATI2::Variable out_sim_protons_rapidity_var_;
+  ATI2::Variable out_sim_pions_rapidity_var_;
 
   std::string config_directory_;
   TFile* file_efficiency_protons_{nullptr};
@@ -59,7 +69,7 @@ private:
   TFile* file_efficiency_pi_minus_{nullptr};
   std::vector<TH2F*> efficiency_pi_minus_;
 
-TASK_DEF(Rapidity, 0)
+TASK_DEF(TracksProcessor, 0)
 };
 
 #endif // HADES_RAPIDITY_SRC_RAPIDITY_H_
