@@ -45,7 +45,9 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
     out_sim_ycm_var_ = out_sim_particles_->NewVariable( "ycm", FLOAT );
     out_sim_abs_ycm_var_ = out_sim_particles_->NewVariable( "abs_ycm", FLOAT );
     out_sim_protons_rapidity_var_ = out_sim_particles_->NewVariable( "protons_rapidity", FLOAT );
-    out_sim_pions_rapidity_var_ = out_sim_particles_->NewVariable( "pions_rapidity", FLOAT );  }
+    out_sim_pions_rapidity_var_ = out_sim_particles_->NewVariable( "pions_rapidity", FLOAT );
+    out_sim_is_charged_ = out_sim_particles_->NewVariable( "is_charged", BOOLEAN );
+  }
   ReadEfficiencyHistos();
   out_file_->cd();
 }
@@ -131,10 +133,17 @@ void TracksProcessor::UserExec() {
       auto mass_pions = TDatabasePDG::Instance()->GetParticle(211)->Mass();
       auto E_pions = sqrt( p*p + mass_pions*mass_pions );
       float y_pions = 0.5 * ( log( E_pions + pz ) - log( E_pions - pz ) );
+      int charge=0;
+      if( TDatabasePDG::Instance()->GetParticle(pid) )
+        charge = TDatabasePDG::Instance()->GetParticle(pid)->Charge() / 3;
+      else{
+        charge = (int)(pid / 1E+4) % (int)1e+3;
+      }
       out_particle[out_sim_ycm_var_].SetVal(y_cm);
       out_particle[out_sim_abs_ycm_var_].SetVal(fabsf(y_cm));
       out_particle[out_sim_protons_rapidity_var_].SetVal(y_protons);
       out_particle[out_sim_pions_rapidity_var_].SetVal(y_pions);
+      out_particle[out_sim_is_charged_].SetVal( charge != 0 );
       in_particle.DataT<Particle>()->SetMass(mass);
     }
   }

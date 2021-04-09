@@ -60,6 +60,7 @@ private:
   ATI2::Variable out_sim_abs_ycm_var_;
   ATI2::Variable out_sim_protons_rapidity_var_;
   ATI2::Variable out_sim_pions_rapidity_var_;
+  ATI2::Variable out_sim_is_charged_;
 
   std::string config_directory_;
   TFile* file_efficiency_protons_{nullptr};
