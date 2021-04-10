@@ -66,7 +66,7 @@ void TracksProcessor::UserExec() {
     else{
       charge = (int)(pid / 1E+4) % (int)1e+3;
     }
-    if(charge==0)
+    if(charge==0 && pid == 0)
       continue;
     auto mass = in_track.DataT<Particle>()->GetMass();
     if( pid != 0 ) {
