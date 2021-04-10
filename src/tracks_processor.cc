@@ -54,16 +54,20 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
 
 void TracksProcessor::UserExec() {
   using AnalysisTree::Particle;
-
   auto centrality = (*event_header_)[centrality_var_].GetVal();
   auto centrality_class = (size_t) ( (centrality-2.5)/5.0 );
   float y_beam = data_header_->GetBeamRapidity();
-
   out_tracks_->ClearChannels();
   for ( auto in_track : in_tracks_->Loop() ) {
-    auto out_particle = out_tracks_->NewChannel();
-    out_particle.CopyContents(in_track);
     auto pid = in_track.DataT<Particle>()->GetPid();
+    int charge=0;
+    if( TDatabasePDG::Instance()->GetParticle(pid) )
+      charge = TDatabasePDG::Instance()->GetParticle(pid)->Charge() / 3;
+    else{
+      charge = (int)(pid / 1E+4) % (int)1e+3;
+    }
+    if(charge==0)
+      continue;
     auto mass = in_track.DataT<Particle>()->GetMass();
     if( pid != 0 ) {
       if( TDatabasePDG::Instance()->GetParticle(pid) )
@@ -71,8 +75,8 @@ void TracksProcessor::UserExec() {
     }
     auto mom4 = in_track.DataT<Particle>()->Get4MomentumByMass(mass);
     auto pT = mom4.Pt();
-    auto p = mom4.P();
-    auto pz = mom4.Pz();
+    auto p = in_track.DataT<Particle>()->GetP();
+    auto pz = in_track.DataT<Particle>()->GetPz();
     float y = mom4.Rapidity();
     float y_cm = y- y_beam;
     auto mass_protons = TDatabasePDG::Instance()->GetParticle(2212)->Mass();
@@ -107,6 +111,8 @@ void TracksProcessor::UserExec() {
       efficiency = 1.0f/efficiency;
     else
       efficiency = 0.0;
+    auto out_particle = out_tracks_->NewChannel();
+    out_particle.CopyContents(in_track);
     out_particle[out_ycm_var_].SetVal(y_cm);
     out_particle[out_abs_ycm_var_].SetVal(fabsf(y_cm));
     out_particle[out_efficiency_var_].SetVal(efficiency);
