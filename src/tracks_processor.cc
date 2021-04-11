@@ -16,7 +16,9 @@ boost::program_options::options_description TracksProcessor::GetBoostOptions() {
 
   options_description desc(GetName() + " options");
   desc.add_options()
-      ("efficiency-file", value(&config_directory_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to efficiency file");
+      ("protons-efficiency", value(&protons_efficiency_file_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
+      ("pi-plus-efficiency", value(&pi_plus_efficiency_file_)->default_value("../../efficiency_files/pi_plus_efficiency.root"), "Path to file with pi-plus' efficiency")
+      ("pi-minus-efficiency", value(&pi_minus_efficiency_file_)->default_value("../../efficiency_files/pi_minus_efficiency.root"), "Path to file with pi-minus' efficiency");
   return desc;
 }
 
@@ -26,6 +28,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   in_tracks_ = GetInBranch("mdc_vtx_tracks");
   event_header_ = GetInBranch("event_header");
   centrality_var_ = GetVar( "event_header/selected_tof_rpc_hits_centrality" );
+  geant_pid_var_ = GetVar( "mdc_vtx_tracks/geant_pid" );
   out_tracks_ = NewBranch( "mdc_vtx_tracks_extra", PARTICLES );
   out_tracks_->CloneVariables(in_tracks_->GetConfig());
   out_ycm_var_ = out_tracks_->NewVariable( "ycm", FLOAT );
@@ -66,8 +69,6 @@ void TracksProcessor::UserExec() {
     else{
       charge = (int)(pid / 1E+4) % (int)1e+3;
     }
-    if(charge==0)
-      continue;
     auto mass = in_track.DataT<Particle>()->GetMass();
     if( pid != 0 ) {
       if( TDatabasePDG::Instance()->GetParticle(pid) )
@@ -98,8 +99,6 @@ void TracksProcessor::UserExec() {
       case 2212:
         efficiency_histogram = efficiency_protons_.at(centrality_class);
         break;
-      case 0:
-        efficiency = 0.0;
       }
       if (efficiency_histogram) {
         auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_cm);
@@ -156,12 +155,9 @@ void TracksProcessor::UserExec() {
 }
 
 void TracksProcessor::ReadEfficiencyHistos(){
-  auto protons_file_name = config_directory_;
-  file_efficiency_protons_ = TFile::Open(protons_file_name.c_str(), "read");
-  auto pi_plus_file_name = config_directory_+"/efficiency_pi_plus.root";
-  file_efficiency_pi_plus_ = TFile::Open(pi_plus_file_name.c_str(), "read");
-  auto pi_minus_file_name = config_directory_+"/efficiency_pi_minus.root";
-  file_efficiency_pi_minus_ = TFile::Open(pi_minus_file_name.c_str(), "read");
+  file_efficiency_protons_ = TFile::Open(protons_efficiency_file_.c_str(), "read");
+  file_efficiency_pi_plus_ = TFile::Open(pi_plus_efficiency_file_.c_str(), "read");
+  file_efficiency_pi_minus_ = TFile::Open(pi_minus_efficiency_file_.c_str(), "read");
   int p=2;
   while(p<40){
     efficiency_protons_.emplace_back();

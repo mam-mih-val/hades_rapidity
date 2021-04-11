@@ -48,6 +48,7 @@ private:
 
   ATI2::Branch *in_tracks_{nullptr};
   ATI2::Branch *out_tracks_{nullptr};
+  ATI2::Variable geant_pid_var_;
   ATI2::Variable out_ycm_var_;
   ATI2::Variable out_abs_ycm_var_;
   ATI2::Variable out_efficiency_var_;
@@ -62,7 +63,9 @@ private:
   ATI2::Variable out_sim_pions_rapidity_var_;
   ATI2::Variable out_sim_is_charged_;
 
-  std::string config_directory_;
+  std::string protons_efficiency_file_;
+  std::string pi_plus_efficiency_file_;
+  std::string pi_minus_efficiency_file_;
   TFile* file_efficiency_protons_{nullptr};
   std::vector<TH2F*> efficiency_protons_;
   TFile* file_efficiency_pi_plus_{nullptr};
