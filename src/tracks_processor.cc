@@ -18,7 +18,8 @@ boost::program_options::options_description TracksProcessor::GetBoostOptions() {
   desc.add_options()
       ("protons-efficiency", value(&protons_efficiency_file_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
       ("pi-plus-efficiency", value(&pi_plus_efficiency_file_)->default_value("../../efficiency_files/pi_plus_efficiency.root"), "Path to file with pi-plus' efficiency")
-      ("pi-minus-efficiency", value(&pi_minus_efficiency_file_)->default_value("../../efficiency_files/pi_minus_efficiency.root"), "Path to file with pi-minus' efficiency");
+      ("pi-minus-efficiency", value(&pi_minus_efficiency_file_)->default_value("../../efficiency_files/pi_minus_efficiency.root"), "Path to file with pi-minus' efficiency")
+      ("deutrons-efficiency", value(&deutrons_efficiency_file_)->default_value("../../efficiency_files/pi_minus_efficiency.root"), "Path to file with pi-minus' efficiency");
   return desc;
 }
 
@@ -63,6 +64,7 @@ void TracksProcessor::UserExec() {
   out_tracks_->ClearChannels();
   for ( auto in_track : in_tracks_->Loop() ) {
     auto pid = in_track.DataT<Particle>()->GetPid();
+    auto geant_pid = in_track[geant_pid_var_].GetInt();
     int charge=0;
     if( TDatabasePDG::Instance()->GetParticle(pid) )
       charge = TDatabasePDG::Instance()->GetParticle(pid)->Charge() / 3;
@@ -99,6 +101,12 @@ void TracksProcessor::UserExec() {
       case 2212:
         efficiency_histogram = efficiency_protons_.at(centrality_class);
         break;
+      default:
+        switch (geant_pid) {
+          case 45:
+            efficiency_histogram = efficiency_deutrons_.at(centrality_class);
+            break;
+        }
       }
       if (efficiency_histogram) {
         auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_cm);
@@ -158,11 +166,13 @@ void TracksProcessor::ReadEfficiencyHistos(){
   file_efficiency_protons_ = TFile::Open(protons_efficiency_file_.c_str(), "read");
   file_efficiency_pi_plus_ = TFile::Open(pi_plus_efficiency_file_.c_str(), "read");
   file_efficiency_pi_minus_ = TFile::Open(pi_minus_efficiency_file_.c_str(), "read");
+  file_efficiency_deutrons_ = TFile::Open(deutrons_efficiency_file_.c_str(), "read");
   int p=2;
   while(p<40){
     efficiency_protons_.emplace_back();
     efficiency_pi_plus_.emplace_back();
     efficiency_pi_minus_.emplace_back();
+    efficiency_deutrons_.emplace_back();
     std::string name = "efficiency_"+std::to_string(p);
     if( file_efficiency_protons_ )
       file_efficiency_protons_->GetObject(name.c_str(), efficiency_protons_.back());
@@ -170,6 +180,8 @@ void TracksProcessor::ReadEfficiencyHistos(){
       file_efficiency_pi_plus_->GetObject(name.c_str(), efficiency_pi_plus_.back());
     if(file_efficiency_pi_minus_)
       file_efficiency_pi_minus_->GetObject(name.c_str(), efficiency_pi_minus_.back());
+    if(file_efficiency_deutrons_)
+      file_efficiency_deutrons_->GetObject(name.c_str(), efficiency_deutrons_.back());
     p+=5;
   }
 }
