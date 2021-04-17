@@ -30,8 +30,10 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   event_header_ = GetInBranch("event_header");
   centrality_var_ = GetVar( "event_header/selected_tof_rpc_hits_centrality" );
   geant_pid_var_ = GetVar( "mdc_vtx_tracks/geant_pid" );
+  charge_var_ = GetVar( "mdc_vtx_tracks/charge" );
   out_tracks_ = NewBranch( "mdc_vtx_tracks_extra", PARTICLES );
   out_tracks_->CloneVariables(in_tracks_->GetConfig());
+  out_is_positive_ = out_tracks_->NewVariable( "is_positive", BOOLEAN );
   out_ycm_var_ = out_tracks_->NewVariable( "ycm", FLOAT );
   out_abs_ycm_var_ = out_tracks_->NewVariable( "abs_ycm", FLOAT );
   out_efficiency_var_ = out_tracks_->NewVariable( "efficiency", FLOAT );
@@ -51,6 +53,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
     out_sim_protons_rapidity_var_ = out_sim_particles_->NewVariable( "protons_rapidity", FLOAT );
     out_sim_pions_rapidity_var_ = out_sim_particles_->NewVariable( "pions_rapidity", FLOAT );
     out_sim_is_charged_ = out_sim_particles_->NewVariable( "is_charged", BOOLEAN );
+    out_sim_is_positive_ = out_sim_particles_->NewVariable( "is_positive", BOOLEAN );
   }
   ReadEfficiencyHistos();
   out_file_->cd();
@@ -65,12 +68,7 @@ void TracksProcessor::UserExec() {
   for ( auto in_track : in_tracks_->Loop() ) {
     auto pid = in_track.DataT<Particle>()->GetPid();
     auto geant_pid = in_track[geant_pid_var_].GetInt();
-    int charge=0;
-    if( TDatabasePDG::Instance()->GetParticle(pid) )
-      charge = TDatabasePDG::Instance()->GetParticle(pid)->Charge() / 3;
-    else{
-      charge = (int)(pid / 1E+4) % (int)1e+3;
-    }
+    int charge=in_track[charge_var_].GetInt();
     auto mass = in_track.DataT<Particle>()->GetMass();
     if( pid != 0 ) {
       if( TDatabasePDG::Instance()->GetParticle(pid) )
@@ -125,6 +123,7 @@ void TracksProcessor::UserExec() {
     out_particle[out_efficiency_var_].SetVal(efficiency);
     out_particle[out_protons_rapidity_var_].SetVal(y_protons);
     out_particle[out_pions_rapidity_var_].SetVal(y_pions);
+    out_particle[out_is_positive_].SetVal( charge > 0 );
     in_track.DataT<Particle>()->SetMass(mass);
   }
   if( is_mc_ ){
@@ -157,6 +156,7 @@ void TracksProcessor::UserExec() {
       out_particle[out_sim_protons_rapidity_var_].SetVal(y_protons);
       out_particle[out_sim_pions_rapidity_var_].SetVal(y_pions);
       out_particle[out_sim_is_charged_].SetVal( charge != 0 );
+      out_particle[out_sim_is_positive_].SetVal( charge > 0 );
       in_particle.DataT<Particle>()->SetMass(mass);
     }
   }
