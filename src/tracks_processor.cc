@@ -6,6 +6,7 @@
 
 #include "TLorentzVector.h"
 #include "TDatabasePDG.h"
+#include "TMath.h"
 
 #include <AnalysisTree/DataHeader.hpp>
 
@@ -54,6 +55,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
     out_sim_pions_rapidity_var_ = out_sim_particles_->NewVariable( "pions_rapidity", FLOAT );
     out_sim_is_charged_ = out_sim_particles_->NewVariable( "is_charged", BOOLEAN );
     out_sim_is_positive_ = out_sim_particles_->NewVariable( "is_positive", BOOLEAN );
+    out_sim_is_in_acceptance_ = out_sim_particles_->NewVariable( "is_in_acceptance", BOOLEAN );
   }
   ReadEfficiencyHistos();
   out_file_->cd();
@@ -157,6 +159,7 @@ void TracksProcessor::UserExec() {
       out_particle[out_sim_pions_rapidity_var_].SetVal(y_pions);
       out_particle[out_sim_is_charged_].SetVal( charge != 0 );
       out_particle[out_sim_is_positive_].SetVal( charge > 0 );
+      out_particle[out_sim_is_in_acceptance_].SetVal( TMath::DegToRad()*18.0 < mom4.Theta() && mom4.Theta() < TMath::DegToRad()*85.0 );
       in_particle.DataT<Particle>()->SetMass(mass);
     }
   }
