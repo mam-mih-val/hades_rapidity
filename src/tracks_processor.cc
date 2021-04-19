@@ -56,6 +56,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
     out_sim_is_charged_ = out_sim_particles_->NewVariable( "is_charged", BOOLEAN );
     out_sim_is_positive_ = out_sim_particles_->NewVariable( "is_positive", BOOLEAN );
     out_sim_is_in_acceptance_ = out_sim_particles_->NewVariable( "is_in_acceptance", BOOLEAN );
+    out_sim_is_in_high_efficiency_ = out_sim_particles_->NewVariable( "out_sim_is_in_high_efficiency", BOOLEAN );
   }
   ReadEfficiencyHistos();
   out_file_->cd();
@@ -153,6 +154,26 @@ void TracksProcessor::UserExec() {
       else{
         charge = (int)(pid / 1E+4) % (int)1e+3;
       }
+      TH2F* efficiency_histogram{nullptr};
+      float efficiency{1.0};
+      try{
+        switch (pid) {
+        case 211:
+          efficiency_histogram = efficiency_pi_plus_.at(centrality_class);
+          break;
+        case -211:
+          efficiency_histogram = efficiency_pi_minus_.at(centrality_class);
+          break;
+        case 2212:
+          efficiency_histogram = efficiency_protons_.at(centrality_class);
+          break;
+        }
+        if (efficiency_histogram) {
+          auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_cm);
+          auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
+          efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
+        }
+      } catch (std::exception&) {}
       out_particle[out_sim_ycm_var_].SetVal(y_cm);
       out_particle[out_sim_abs_ycm_var_].SetVal(fabsf(y_cm));
       out_particle[out_sim_protons_rapidity_var_].SetVal(y_protons);
@@ -160,6 +181,7 @@ void TracksProcessor::UserExec() {
       out_particle[out_sim_is_charged_].SetVal( charge != 0 );
       out_particle[out_sim_is_positive_].SetVal( charge > 0 );
       out_particle[out_sim_is_in_acceptance_].SetVal( TMath::DegToRad()*18.0 < mom4.Theta() && mom4.Theta() < TMath::DegToRad()*85.0 );
+      out_particle[out_sim_is_in_high_efficiency_].SetVal( efficiency > 0.1 );
       in_particle.DataT<Particle>()->SetMass(mass);
     }
   }
