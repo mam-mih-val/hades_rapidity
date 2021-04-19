@@ -51,6 +51,7 @@ private:
   ATI2::Variable geant_pid_var_;
   ATI2::Variable charge_var_;
   ATI2::Variable out_is_positive_;
+  ATI2::Variable out_is_in_protons_acceptance_;
   ATI2::Variable out_ycm_var_;
   ATI2::Variable out_abs_ycm_var_;
   ATI2::Variable out_efficiency_var_;
@@ -66,6 +67,7 @@ private:
   ATI2::Variable out_sim_is_charged_;
   ATI2::Variable out_sim_is_positive_;
   ATI2::Variable out_sim_is_in_acceptance_;
+  ATI2::Variable out_sim_is_in_protons_acceptance_;
   ATI2::Variable out_sim_is_in_high_efficiency_;
 
   std::string protons_efficiency_file_;

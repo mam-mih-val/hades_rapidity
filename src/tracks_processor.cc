@@ -35,6 +35,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   out_tracks_ = NewBranch( "mdc_vtx_tracks_extra", PARTICLES );
   out_tracks_->CloneVariables(in_tracks_->GetConfig());
   out_is_positive_ = out_tracks_->NewVariable( "is_positive", BOOLEAN );
+  out_is_in_protons_acceptance_ = out_tracks_->NewVariable( "is_in_protons_acceptance", BOOLEAN );
   out_ycm_var_ = out_tracks_->NewVariable( "ycm", FLOAT );
   out_abs_ycm_var_ = out_tracks_->NewVariable( "abs_ycm", FLOAT );
   out_efficiency_var_ = out_tracks_->NewVariable( "efficiency", FLOAT );
@@ -56,6 +57,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
     out_sim_is_charged_ = out_sim_particles_->NewVariable( "is_charged", BOOLEAN );
     out_sim_is_positive_ = out_sim_particles_->NewVariable( "is_positive", BOOLEAN );
     out_sim_is_in_acceptance_ = out_sim_particles_->NewVariable( "is_in_acceptance", BOOLEAN );
+    out_sim_is_in_protons_acceptance_ = out_sim_particles_->NewVariable( "is_in_protons_acceptance", BOOLEAN );
     out_sim_is_in_high_efficiency_ = out_sim_particles_->NewVariable( "is_in_high_efficiency", BOOLEAN );
   }
   ReadEfficiencyHistos();
@@ -119,6 +121,15 @@ void TracksProcessor::UserExec() {
       efficiency = 1.0f/efficiency;
     else
       efficiency = 0.0;
+    double protons_efficiency=0.0;
+    try{
+      efficiency_histogram = efficiency_protons_.at(centrality_class);
+      if (efficiency_histogram) {
+        auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_protons);
+        auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
+        protons_efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
+      }
+    } catch (std::exception&) {}
     auto out_particle = out_tracks_->NewChannel();
     out_particle.CopyContents(in_track);
     out_particle[out_ycm_var_].SetVal(y_cm);
@@ -127,6 +138,7 @@ void TracksProcessor::UserExec() {
     out_particle[out_protons_rapidity_var_].SetVal(y_protons);
     out_particle[out_pions_rapidity_var_].SetVal(y_pions);
     out_particle[out_is_positive_].SetVal( charge > 0 );
+    out_particle[out_is_in_protons_acceptance_].SetVal( protons_efficiency > 0.1 );
     in_track.DataT<Particle>()->SetMass(mass);
   }
   if( is_mc_ ){
@@ -174,6 +186,15 @@ void TracksProcessor::UserExec() {
           efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
         }
       } catch (std::exception&) {}
+      double protons_efficiency=0.0;
+      try{
+        efficiency_histogram = efficiency_protons_.at(centrality_class);
+        if (efficiency_histogram) {
+          auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_protons);
+          auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
+          protons_efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
+        }
+      } catch (std::exception&) {}
       out_particle[out_sim_ycm_var_].SetVal(y_cm);
       out_particle[out_sim_abs_ycm_var_].SetVal(fabsf(y_cm));
       out_particle[out_sim_protons_rapidity_var_].SetVal(y_protons);
@@ -182,6 +203,7 @@ void TracksProcessor::UserExec() {
       out_particle[out_sim_is_positive_].SetVal( charge > 0 );
       out_particle[out_sim_is_in_acceptance_].SetVal( TMath::DegToRad()*18.0 < mom4.Theta() && mom4.Theta() < TMath::DegToRad()*85.0 );
       out_particle[out_sim_is_in_high_efficiency_].SetVal( efficiency > 0.1 );
+      out_particle[out_sim_is_in_protons_acceptance_].SetVal( protons_efficiency > 0.1 );
       in_particle.DataT<Particle>()->SetMass(mass);
     }
   }
