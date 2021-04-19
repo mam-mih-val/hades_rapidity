@@ -56,7 +56,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
     out_sim_is_charged_ = out_sim_particles_->NewVariable( "is_charged", BOOLEAN );
     out_sim_is_positive_ = out_sim_particles_->NewVariable( "is_positive", BOOLEAN );
     out_sim_is_in_acceptance_ = out_sim_particles_->NewVariable( "is_in_acceptance", BOOLEAN );
-    out_sim_is_in_high_efficiency_ = out_sim_particles_->NewVariable( "out_sim_is_in_high_efficiency", BOOLEAN );
+    out_sim_is_in_high_efficiency_ = out_sim_particles_->NewVariable( "is_in_high_efficiency", BOOLEAN );
   }
   ReadEfficiencyHistos();
   out_file_->cd();
