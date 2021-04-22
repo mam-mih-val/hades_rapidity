@@ -56,6 +56,7 @@ private:
   ATI2::Variable out_abs_ycm_var_;
   ATI2::Variable out_efficiency_var_;
   ATI2::Variable out_protons_rapidity_var_;
+  ATI2::Variable out_protons_pT_var_;
   ATI2::Variable out_pions_rapidity_var_;
 
   ATI2::Branch *in_sim_particles_{nullptr};
@@ -63,6 +64,7 @@ private:
   ATI2::Variable out_sim_ycm_var_;
   ATI2::Variable out_sim_abs_ycm_var_;
   ATI2::Variable out_sim_protons_rapidity_var_;
+  ATI2::Variable out_sim_protons_pT_var_;
   ATI2::Variable out_sim_pions_rapidity_var_;
   ATI2::Variable out_sim_is_charged_;
   ATI2::Variable out_sim_is_positive_;
