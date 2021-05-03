@@ -61,6 +61,7 @@ private:
 
   ATI2::Branch *in_sim_particles_{nullptr};
   ATI2::Branch *out_sim_particles_{nullptr};
+  ATI2::Variable out_sim_theta_var_;
   ATI2::Variable out_sim_ycm_var_;
   ATI2::Variable out_sim_abs_ycm_var_;
   ATI2::Variable out_sim_protons_rapidity_var_;

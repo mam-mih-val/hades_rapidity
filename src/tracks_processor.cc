@@ -51,6 +51,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   if( is_mc_ ) {
     out_sim_particles_ = NewBranch( "sim_particles_extra", PARTICLES );
     out_sim_particles_ ->CloneVariables( in_sim_particles_->GetConfig() );
+    out_sim_theta_var_ = out_sim_particles_->NewVariable( "theta", FLOAT );
     out_sim_ycm_var_ = out_sim_particles_->NewVariable( "ycm", FLOAT );
     out_sim_abs_ycm_var_ = out_sim_particles_->NewVariable( "abs_ycm", FLOAT );
     out_sim_protons_rapidity_var_ = out_sim_particles_->NewVariable( "protons_rapidity", FLOAT );
@@ -195,6 +196,7 @@ void TracksProcessor::UserExec() {
           protons_efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
         }
       } catch (std::exception&) {}
+      out_particle[out_sim_theta_var_].SetVal((float)mom4.Theta());
       out_particle[out_sim_ycm_var_].SetVal(y_cm);
       out_particle[out_sim_abs_ycm_var_].SetVal(fabsf(y_cm));
       out_particle[out_sim_protons_rapidity_var_].SetVal(y_protons);
