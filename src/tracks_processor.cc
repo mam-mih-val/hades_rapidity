@@ -154,6 +154,7 @@ void TracksProcessor::UserExec() {
       auto mass_protons = TDatabasePDG::Instance()->GetParticle(2212)->Mass();
       auto pT = mom4.Pt();
       auto theta = mom4.Theta();
+      auto p = mom4.P();
       auto p_protons = (mom4.P() / mass)*mass_protons;
       auto pz_protons = p_protons*cos( theta );
       float pT_protons = p_protons*sin(theta);
@@ -196,6 +197,19 @@ void TracksProcessor::UserExec() {
           protons_efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
         }
       } catch (std::exception&) {}
+      double p_hi = (4.95-2.5*theta)/1.2;
+      double p_lo = 0.4;
+      auto theta_lo = 0.3;
+      auto theta_hi = 1.5;
+      bool is_in_acceptance{true};
+      if( p < p_lo )
+        is_in_acceptance = false;
+      if( p > p_hi )
+        is_in_acceptance = false;
+      if( theta > theta_hi )
+        is_in_acceptance = false;
+      if( theta < theta_lo )
+        is_in_acceptance = false;
       out_particle[out_sim_theta_var_].SetVal((float)mom4.Theta());
       out_particle[out_sim_ycm_var_].SetVal(y_cm);
       out_particle[out_sim_abs_ycm_var_].SetVal(fabsf(y_cm));
@@ -203,7 +217,7 @@ void TracksProcessor::UserExec() {
       out_particle[out_sim_protons_pT_var_].SetVal(pT_protons);
       out_particle[out_sim_is_charged_].SetVal( charge != 0 );
       out_particle[out_sim_is_positive_].SetVal( charge > 0 );
-      out_particle[out_sim_is_in_acceptance_].SetVal( TMath::DegToRad()*18.0 < mom4.Theta() && mom4.Theta() < TMath::DegToRad()*85.0 );
+      out_particle[out_sim_is_in_acceptance_].SetVal( is_in_acceptance );
       out_particle[out_sim_is_in_high_efficiency_].SetVal( efficiency > 0.1 );
       out_particle[out_sim_is_in_protons_acceptance_].SetVal( protons_efficiency > 0.1 );
       in_particle.DataT<Particle>()->SetMass(mass);
