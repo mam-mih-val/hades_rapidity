@@ -85,14 +85,13 @@ void TracksProcessor::UserExec() {
     auto mom4 = in_track.DataT<Particle>()->Get4MomentumByMass(mass);
     auto mass_protons = TDatabasePDG::Instance()->GetParticle(2212)->Mass();
     auto pT = mom4.Pt();
+    auto p = mom4.P();
+    auto pz = mom4.Pz();
     auto theta = mom4.Theta();
-    auto p_protons = (mom4.P() / mass)*mass_protons;
-    auto pz_protons = p_protons*cos( theta );
-    float pT_protons = p_protons*sin(theta);
     float y = mom4.Rapidity();
     float y_cm = y- y_beam;
-    auto E_protons = sqrt(p_protons * p_protons + mass_protons*mass_protons );
-    float y_protons = 0.5 * ( log( E_protons + pz_protons) - log( E_protons - pz_protons) ) - y_beam;
+    float E_protons = sqrtf(p * p + mass_protons*mass_protons );
+    float y_protons = 0.5f * ( logf( E_protons + pz) - logf( E_protons - pz) ) - y_beam;
     TH2F* efficiency_histogram{nullptr};
     float efficiency{1.0};
     try{
@@ -138,7 +137,6 @@ void TracksProcessor::UserExec() {
     out_particle[out_abs_ycm_var_].SetVal(fabsf(y_cm));
     out_particle[out_efficiency_var_].SetVal(efficiency);
     out_particle[out_protons_rapidity_var_].SetVal(y_protons);
-    out_particle[out_protons_pT_var_].SetVal(pT_protons);
     out_particle[out_is_positive_].SetVal( charge > 0 );
     out_particle[out_is_in_protons_acceptance_].SetVal( protons_efficiency > 0.1 );
     in_track.DataT<Particle>()->SetMass(mass);
@@ -155,13 +153,11 @@ void TracksProcessor::UserExec() {
       auto pT = mom4.Pt();
       auto theta = mom4.Theta();
       auto p = mom4.P();
-      auto p_protons = (mom4.P() / mass)*mass_protons;
-      auto pz_protons = p_protons*cos( theta );
-      float pT_protons = p_protons*sin(theta);
+      auto pz = mom4.Pz();
       float y = mom4.Rapidity();
       float y_cm = y- y_beam;
-      auto E_protons = sqrt(p_protons * p_protons + mass_protons*mass_protons );
-      float y_protons = 0.5 * ( log( E_protons + pz_protons) - log( E_protons - pz_protons) ) - y_beam;
+      auto E_protons = sqrt(p * p + mass_protons*mass_protons );
+      float y_protons = 0.5 * ( log( E_protons + pz) - log( E_protons - pz) ) - y_beam;
       int charge=0;
       if( TDatabasePDG::Instance()->GetParticle(pid) )
         charge = TDatabasePDG::Instance()->GetParticle(pid)->Charge() / 3;
@@ -214,7 +210,6 @@ void TracksProcessor::UserExec() {
       out_particle[out_sim_ycm_var_].SetVal(y_cm);
       out_particle[out_sim_abs_ycm_var_].SetVal(fabsf(y_cm));
       out_particle[out_sim_protons_rapidity_var_].SetVal(y_protons);
-      out_particle[out_sim_protons_pT_var_].SetVal(pT_protons);
       out_particle[out_sim_is_charged_].SetVal( charge != 0 );
       out_particle[out_sim_is_positive_].SetVal( charge > 0 );
       out_particle[out_sim_is_in_acceptance_].SetVal( is_in_acceptance );
