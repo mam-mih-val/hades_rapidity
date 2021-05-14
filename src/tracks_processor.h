@@ -72,6 +72,7 @@ private:
   ATI2::Variable out_sim_is_in_acceptance_;
   ATI2::Variable out_sim_is_in_protons_acceptance_;
   ATI2::Variable out_sim_is_in_high_efficiency_;
+  ATI2::Variable out_sim_efficiency_;
 
   std::string protons_efficiency_file_;
   std::string pi_plus_efficiency_file_;

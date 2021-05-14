@@ -9,6 +9,7 @@
 #include "TMath.h"
 
 #include <AnalysisTree/DataHeader.hpp>
+#include <random>
 
 TASK_IMPL(TracksProcessor)
 
@@ -62,6 +63,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
     out_sim_is_in_acceptance_ = out_sim_particles_->NewVariable( "is_in_acceptance", BOOLEAN );
     out_sim_is_in_protons_acceptance_ = out_sim_particles_->NewVariable( "is_in_protons_acceptance", BOOLEAN );
     out_sim_is_in_high_efficiency_ = out_sim_particles_->NewVariable( "is_in_high_efficiency", BOOLEAN );
+    out_sim_efficiency_ = out_sim_particles_->NewVariable( "efficiency", BOOLEAN );
   }
   ReadEfficiencyHistos();
   out_file_->cd();
@@ -184,15 +186,11 @@ void TracksProcessor::UserExec() {
           efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
         }
       } catch (std::exception&) {}
-      double protons_efficiency=0.0;
-      try{
-        efficiency_histogram = efficiency_protons_.at(centrality_class);
-        if (efficiency_histogram) {
-          auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_protons);
-          auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
-          protons_efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
-        }
-      } catch (std::exception&) {}
+      std::random_device r;
+      // Choose a random mean between 1 and 6
+      std::default_random_engine e1(r());
+      std::uniform_real_distribution<double> uniform_dist(0, 1);
+      double r_num = uniform_dist(e1);
       double p_hi = (4.95-2.5*theta)/1.2;
       double p_lo = 0.4;
       auto theta_lo = 0.3;
@@ -213,8 +211,8 @@ void TracksProcessor::UserExec() {
       out_particle[out_sim_is_charged_].SetVal( charge != 0 );
       out_particle[out_sim_is_positive_].SetVal( charge > 0 );
       out_particle[out_sim_is_in_acceptance_].SetVal( is_in_acceptance );
-      out_particle[out_sim_is_in_high_efficiency_].SetVal( efficiency > 0.1 );
-      out_particle[out_sim_is_in_protons_acceptance_].SetVal( protons_efficiency > 0.1 );
+      out_particle[out_sim_is_in_high_efficiency_].SetVal( r_num < efficiency );
+      out_particle[out_sim_efficiency_].SetVal(  efficiency > 0.1 ? 1.0f/ (float) efficiency : 0.0f );
       in_particle.DataT<Particle>()->SetMass(mass);
     }
   }
