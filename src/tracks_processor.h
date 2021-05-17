@@ -75,11 +75,14 @@ private:
   ATI2::Variable out_sim_efficiency_;
 
   std::string protons_efficiency_file_;
+  std::string protons_analysis_bins_efficiency_file_;
   std::string pi_plus_efficiency_file_;
   std::string pi_minus_efficiency_file_;
   std::string deutrons_efficiency_file_;
   TFile* file_efficiency_protons_{nullptr};
   std::vector<TH2F*> efficiency_protons_;
+  TFile* file_analysis_bins_efficiency_protons_{nullptr};
+  std::vector<TH2F*> analysis_bins_efficiency_protons_;
   TFile* file_efficiency_pi_plus_{nullptr};
   std::vector<TH2F*> efficiency_pi_plus_;
   TFile* file_efficiency_pi_minus_{nullptr};

@@ -19,6 +19,7 @@ boost::program_options::options_description TracksProcessor::GetBoostOptions() {
   options_description desc(GetName() + " options");
   desc.add_options()
       ("protons-efficiency", value(&protons_efficiency_file_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
+      ("analysis-bins-efficiency", value(&protons_analysis_bins_efficiency_file_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
       ("pi-plus-efficiency", value(&pi_plus_efficiency_file_)->default_value("../../efficiency_files/pi_plus_efficiency.root"), "Path to file with pi-plus' efficiency")
       ("pi-minus-efficiency", value(&pi_minus_efficiency_file_)->default_value("../../efficiency_files/pi_minus_efficiency.root"), "Path to file with pi-minus' efficiency")
       ("deutrons-efficiency", value(&deutrons_efficiency_file_)->default_value("../../efficiency_files/pi_minus_efficiency.root"), "Path to file with pi-minus' efficiency");
@@ -95,7 +96,9 @@ void TracksProcessor::UserExec() {
     float E_protons = sqrtf(p * p + mass_protons*mass_protons );
     float y_protons = 0.5f * ( logf( E_protons + pz) - logf( E_protons - pz) ) - y_beam;
     TH2F* efficiency_histogram{nullptr};
+    TH2F* analysis_bins_efficiency_histogram{nullptr};
     float efficiency{1.0};
+    float mean_efficiency{1.0};
     try{
       switch (pid) {
       case 211:
@@ -106,6 +109,7 @@ void TracksProcessor::UserExec() {
         break;
       case 2212:
         efficiency_histogram = efficiency_protons_.at(centrality_class);
+        analysis_bins_efficiency_histogram = analysis_bins_efficiency_protons_.at(centrality_class);
         break;
       default:
         switch (geant_pid) {
@@ -119,8 +123,13 @@ void TracksProcessor::UserExec() {
         auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
         efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
       }
+      if (analysis_bins_efficiency_histogram) {
+        auto bin_y = analysis_bins_efficiency_histogram->GetXaxis()->FindBin(y_cm);
+        auto bin_pT = analysis_bins_efficiency_histogram->GetYaxis()->FindBin(pT);
+        mean_efficiency = analysis_bins_efficiency_histogram->GetBinContent(bin_y, bin_pT);
+      }
     } catch (std::exception&) {}
-    if( efficiency > 0.1 )
+    if( efficiency > 0.1 && mean_efficiency > 0.3 )
       efficiency = 1.0f/efficiency;
     else
       efficiency = 0.0;
@@ -223,12 +232,14 @@ void TracksProcessor::ReadEfficiencyHistos(){
   file_efficiency_pi_plus_ = TFile::Open(pi_plus_efficiency_file_.c_str(), "read");
   file_efficiency_pi_minus_ = TFile::Open(pi_minus_efficiency_file_.c_str(), "read");
   file_efficiency_deutrons_ = TFile::Open(deutrons_efficiency_file_.c_str(), "read");
+  file_analysis_bins_efficiency_protons_ = TFile::Open(protons_analysis_bins_efficiency_file_.c_str(), "read");
   int p=2;
   while(p<40){
     efficiency_protons_.emplace_back();
     efficiency_pi_plus_.emplace_back();
     efficiency_pi_minus_.emplace_back();
     efficiency_deutrons_.emplace_back();
+    analysis_bins_efficiency_protons_.emplace_back();
     std::string name = "efficiency_"+std::to_string(p);
     if( file_efficiency_protons_ )
       file_efficiency_protons_->GetObject(name.c_str(), efficiency_protons_.back());
@@ -238,6 +249,8 @@ void TracksProcessor::ReadEfficiencyHistos(){
       file_efficiency_pi_minus_->GetObject(name.c_str(), efficiency_pi_minus_.back());
     if(file_efficiency_deutrons_)
       file_efficiency_deutrons_->GetObject(name.c_str(), efficiency_deutrons_.back());
+    if(file_analysis_bins_efficiency_protons_)
+      file_analysis_bins_efficiency_protons_->GetObject(name.c_str(), analysis_bins_efficiency_protons_.back());
     p+=5;
   }
 }
