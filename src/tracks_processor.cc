@@ -129,7 +129,7 @@ void TracksProcessor::UserExec() {
         mean_efficiency = analysis_bins_efficiency_histogram->GetBinContent(bin_y, bin_pT);
       }
     } catch (std::exception&) {}
-    if( efficiency > 0.1 && mean_efficiency > 0.3 )
+    if( efficiency > 0.3 && mean_efficiency > 0.3 )
       efficiency = 1.0f/efficiency;
     else
       efficiency = 0.0;
