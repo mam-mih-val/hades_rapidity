@@ -40,6 +40,7 @@ protected:
 private:
   void ReadEfficiencyHistos();
   bool is_mc_=true;
+  double beta_cm_;
 
   std::string out_tracks_branch_;
 
@@ -53,6 +54,7 @@ private:
   ATI2::Variable out_is_positive_;
   ATI2::Variable out_is_in_protons_acceptance_;
   ATI2::Variable out_ycm_var_;
+  ATI2::Variable out_eta_cm_var_;
   ATI2::Variable out_abs_ycm_var_;
   ATI2::Variable out_efficiency_var_;
   ATI2::Variable out_protons_rapidity_var_;
@@ -63,6 +65,7 @@ private:
   ATI2::Branch *out_sim_particles_{nullptr};
   ATI2::Variable out_sim_theta_var_;
   ATI2::Variable out_sim_ycm_var_;
+  ATI2::Variable out_sim_eta_cm_var_;
   ATI2::Variable out_sim_abs_ycm_var_;
   ATI2::Variable out_sim_protons_rapidity_var_;
   ATI2::Variable out_sim_protons_pT_var_;

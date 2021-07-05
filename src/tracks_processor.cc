@@ -29,6 +29,8 @@ boost::program_options::options_description TracksProcessor::GetBoostOptions() {
 void TracksProcessor::PreInit() {}
 
 void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
+  auto y_cm = data_header_->GetBeamRapidity();
+  beta_cm_ = tanh(y_cm);
   in_tracks_ = GetInBranch("mdc_vtx_tracks");
   event_header_ = GetInBranch("event_header");
   centrality_var_ = GetVar( "event_header/selected_tof_rpc_hits_centrality" );
@@ -39,6 +41,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   out_is_positive_ = out_tracks_->NewVariable( "is_positive", BOOLEAN );
   out_is_in_protons_acceptance_ = out_tracks_->NewVariable( "is_in_protons_acceptance", BOOLEAN );
   out_ycm_var_ = out_tracks_->NewVariable( "ycm", FLOAT );
+  out_eta_cm_var_ = out_tracks_->NewVariable( "eta_cm", FLOAT );
   out_abs_ycm_var_ = out_tracks_->NewVariable( "abs_ycm", FLOAT );
   out_efficiency_var_ = out_tracks_->NewVariable( "efficiency", FLOAT );
   out_protons_rapidity_var_ = out_tracks_->NewVariable( "protons_rapidity", FLOAT );
@@ -55,6 +58,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
     out_sim_particles_ ->CloneVariables( in_sim_particles_->GetConfig() );
     out_sim_theta_var_ = out_sim_particles_->NewVariable( "theta", FLOAT );
     out_sim_ycm_var_ = out_sim_particles_->NewVariable( "ycm", FLOAT );
+    out_sim_eta_cm_var_ = out_sim_particles_->NewVariable( "eta_cm", FLOAT );
     out_sim_abs_ycm_var_ = out_sim_particles_->NewVariable( "abs_ycm", FLOAT );
     out_sim_protons_rapidity_var_ = out_sim_particles_->NewVariable( "protons_rapidity", FLOAT );
     out_sim_protons_pT_var_ = out_sim_particles_->NewVariable( "protons_pT", FLOAT );
@@ -86,6 +90,8 @@ void TracksProcessor::UserExec() {
         mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
     }
     auto mom4 = in_track.DataT<Particle>()->Get4MomentumByMass(mass);
+    auto mom4_cm = mom4;
+    mom4_cm.Boost({0.0, 0.0, -beta_cm_});
     auto mass_protons = TDatabasePDG::Instance()->GetParticle(2212)->Mass();
     auto pT = mom4.Pt();
     auto p = mom4.P();
@@ -145,6 +151,7 @@ void TracksProcessor::UserExec() {
     auto out_particle = out_tracks_->NewChannel();
     out_particle.CopyContents(in_track);
     out_particle[out_ycm_var_].SetVal(y_cm);
+    out_particle[out_eta_cm_var_].SetVal( (float) mom4_cm.PseudoRapidity());
     out_particle[out_abs_ycm_var_].SetVal(fabsf(y_cm));
     out_particle[out_efficiency_var_].SetVal(efficiency);
     out_particle[out_protons_rapidity_var_].SetVal(y_protons);
@@ -160,6 +167,8 @@ void TracksProcessor::UserExec() {
       auto pid = in_particle.DataT<Particle>()->GetPid();
       auto mass = in_particle.DataT<Particle>()->GetMass();
       auto mom4 = in_particle.DataT<Particle>()->Get4MomentumByMass(mass);
+      auto mom4_cm = mom4;
+      mom4_cm.Boost( {0.0, 0.0, -beta_cm_} );
       auto mass_protons = TDatabasePDG::Instance()->GetParticle(2212)->Mass();
       auto pT = mom4.Pt();
       auto theta = mom4.Theta();
@@ -215,6 +224,7 @@ void TracksProcessor::UserExec() {
         is_in_acceptance = false;
       out_particle[out_sim_theta_var_].SetVal((float)mom4.Theta());
       out_particle[out_sim_ycm_var_].SetVal(y_cm);
+      out_particle[out_sim_eta_cm_var_].SetVal( (float) mom4_cm.PseudoRapidity());
       out_particle[out_sim_abs_ycm_var_].SetVal(fabsf(y_cm));
       out_particle[out_sim_protons_rapidity_var_].SetVal(y_protons);
       out_particle[out_sim_is_charged_].SetVal( charge != 0 );
