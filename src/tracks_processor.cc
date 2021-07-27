@@ -39,6 +39,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   charge_var_ = GetVar( "mdc_vtx_tracks/charge" );
   out_tracks_ = NewBranch( "mdc_vtx_tracks_extra", PARTICLES );
   out_tracks_->CloneVariables(in_tracks_->GetConfig());
+  out_is_pion_ = out_tracks_->NewVariable( "is_pion", BOOLEAN );
   out_is_positive_ = out_tracks_->NewVariable( "is_positive", BOOLEAN );
   out_is_in_protons_acceptance_ = out_tracks_->NewVariable( "is_in_protons_acceptance", BOOLEAN );
   out_ycm_var_ = out_tracks_->NewVariable( "ycm", FLOAT );
@@ -164,6 +165,7 @@ void TracksProcessor::UserExec() {
     out_particle[out_abs_ycm_var_].SetVal(fabsf(y_cm));
     out_particle[out_efficiency_var_].SetVal(efficiency);
     out_particle[out_protons_rapidity_var_].SetVal(y_protons);
+    out_particle[out_is_pion_].SetVal( abs(pid) == 211 );
     out_particle[out_is_positive_].SetVal( charge > 0 );
     out_particle[out_is_in_protons_acceptance_].SetVal( protons_efficiency > 0.1 );
     in_track.DataT<Particle>()->SetMass(mass);
