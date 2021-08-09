@@ -43,6 +43,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   out_is_positive_ = out_tracks_->NewVariable( "is_positive", BOOLEAN );
   out_is_in_protons_acceptance_ = out_tracks_->NewVariable( "is_in_protons_acceptance", BOOLEAN );
   out_ycm_var_ = out_tracks_->NewVariable( "ycm", FLOAT );
+  out_theta_var_ = out_tracks_->NewVariable( "theta", FLOAT );
   out_eta_cm_var_ = out_tracks_->NewVariable( "eta_cm", FLOAT );
   out_abs_ycm_var_ = out_tracks_->NewVariable( "abs_ycm", FLOAT );
   out_efficiency_var_ = out_tracks_->NewVariable( "efficiency", FLOAT );
@@ -161,6 +162,7 @@ void TracksProcessor::UserExec() {
     auto out_particle = out_tracks_->NewChannel();
     out_particle.CopyContents(in_track);
     out_particle[out_ycm_var_].SetVal(y_cm);
+    out_particle[out_theta_var_].SetVal( (float) theta);
     out_particle[out_eta_cm_var_].SetVal( (float) mom4_cm.PseudoRapidity());
     out_particle[out_abs_ycm_var_].SetVal(fabsf(y_cm));
     out_particle[out_efficiency_var_].SetVal(efficiency);

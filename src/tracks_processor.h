@@ -54,6 +54,7 @@ private:
   ATI2::Variable out_is_pion_;
   ATI2::Variable out_is_positive_;
   ATI2::Variable out_is_in_protons_acceptance_;
+  ATI2::Variable out_theta_var_;
   ATI2::Variable out_ycm_var_;
   ATI2::Variable out_eta_cm_var_;
   ATI2::Variable out_abs_ycm_var_;
