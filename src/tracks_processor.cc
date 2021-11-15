@@ -19,6 +19,7 @@ boost::program_options::options_description TracksProcessor::GetBoostOptions() {
   options_description desc(GetName() + " options");
   desc.add_options()
       ("protons-efficiency", value(&protons_efficiency_file_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
+      ("three-efficiency", value(&protons_efficiency_3d_file_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
       ("analysis-bins-efficiency", value(&protons_analysis_bins_efficiency_file_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
       ("pi-plus-efficiency", value(&pi_plus_efficiency_file_)->default_value("../../efficiency_files/pi_plus_efficiency.root"), "Path to file with pi-plus' efficiency")
       ("pi-minus-efficiency", value(&pi_minus_efficiency_file_)->default_value("../../efficiency_files/pi_minus_efficiency.root"), "Path to file with pi-minus' efficiency")
@@ -50,6 +51,21 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   out_protons_rapidity_var_ = out_tracks_->NewVariable( "protons_rapidity", FLOAT );
   out_protons_pT_var_ = out_tracks_->NewVariable( "protons_pT", FLOAT );
   out_pions_rapidity_var_ = out_tracks_->NewVariable( "pions_rapidity", FLOAT );
+
+  h1_phi_event_by_event_ = new TH1F( "phi_event_by_event", ";#phi;", 6, -M_PI, M_PI );
+  std::vector<double> pt_axis;
+  std::vector<double> y_axis;
+  std::vector<double> phi_axis;
+  pt_axis = {0.0,     0.29375, 0.35625, 0.41875, 0.48125, 0.54375,
+             0.61875, 0.70625, 0.81875, 1.01875, 2.0};
+  for( int i=0; i<16; i+=1 ){ y_axis.push_back(-0.75+i*0.1); }
+  for( int i=0; i<7; i++ ){phi_axis.push_back(-M_PI+(i*2*M_PI)/6.0);}
+
+  h3_y_pT_phi_event_by_event_ = new TH3F( "h3_tru_y_pT_phi", ";#phi;",
+                                         y_axis.size()-1, y_axis.data(),
+                                         pt_axis.size()-1, pt_axis.data(),
+                                         phi_axis.size()-1, phi_axis.data());
+
   try {
     in_sim_particles_ = GetInBranch("sim_tracks");
     is_mc_=true;
@@ -83,6 +99,8 @@ void TracksProcessor::UserExec() {
   auto centrality_class = (size_t) ( (centrality-2.5)/5.0 );
   float y_beam = data_header_->GetBeamRapidity();
   out_tracks_->ClearChannels();
+  if( efficiency_3d_protons_ )
+    this->CalculateNparticlesSector();
   for ( auto in_track : in_tracks_->Loop() ) {
     auto pid = in_track.DataT<Particle>()->GetPid();
     auto geant_pid = in_track[geant_pid_var_].GetInt();
@@ -159,6 +177,22 @@ void TracksProcessor::UserExec() {
         protons_efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
       }
     } catch (std::exception&) {}
+    if( pid == 2212 ){
+      if( efficiency_3d_protons_ && is_mc_ ){
+        auto phi = mom4.Phi();
+        auto pT = mom4.Pt();
+        auto y = mom4.Rapidity() - y_beam;
+        auto sector_id = h1_phi_event_by_event_->FindBin( phi );
+        auto n_particles_sector = h1_phi_event_by_event_->GetBinContent(sector_id);
+        auto y_bin = h3_y_pT_phi_event_by_event_->GetXaxis()->FindBin( y );
+        auto pT_bin = h3_y_pT_phi_event_by_event_->GetYaxis()->FindBin( pT );
+        auto n_particles_event = h3_y_pT_phi_event_by_event_->GetBinContent( y_bin, pT_bin, sector_id );
+        auto not_biased_particles_sector = n_particles_sector - n_particles_event;
+        efficiency = efficiency_3d_protons_->GetBinContent( y_bin, pT_bin, not_biased_particles_sector );
+        if( efficiency > 0.3 )
+          efficiency = 1.0 / efficiency;
+      }
+    }
     auto out_particle = out_tracks_->NewChannel();
     out_particle.CopyContents(in_track);
     out_particle[out_ycm_var_].SetVal(y_cm);
@@ -255,8 +289,10 @@ void TracksProcessor::ReadEfficiencyHistos(){
   file_efficiency_pi_plus_ = TFile::Open(pi_plus_efficiency_file_.c_str(), "read");
   file_efficiency_pi_minus_ = TFile::Open(pi_minus_efficiency_file_.c_str(), "read");
   file_efficiency_deutrons_ = TFile::Open(deutrons_efficiency_file_.c_str(), "read");
+  file_efficiency_3d_protons_ = TFile::Open(protons_efficiency_3d_file_.c_str(), "read");
   file_analysis_bins_efficiency_protons_ = TFile::Open(protons_analysis_bins_efficiency_file_.c_str(), "read");
   file_efficiency_all_ = TFile::Open(all_efficiency_file_.c_str(), "read");
+  file_efficiency_3d_protons_->GetObject( "p3_y_pT_npart_sector", efficiency_3d_protons_ );
   int p=2;
   while(p<40){
     efficiency_protons_.emplace_back();
@@ -282,6 +318,33 @@ void TracksProcessor::ReadEfficiencyHistos(){
     if( file_efficiency_all_ )
       file_efficiency_all_->GetObject(name.c_str(), efficiency_all_.back() );
     p+=5;
+  }
+}
+void TracksProcessor::CalculateNparticlesSector() {
+  using AnalysisTree::Particle;
+  h1_phi_event_by_event_->Reset();
+  h3_y_pT_phi_event_by_event_->Reset();
+  float y_beam = data_header_->GetBeamRapidity();
+  auto tru_is_primary = GetVar("sim_tracks/is_primary");
+  if( is_mc_ ){
+    for ( auto particle : in_sim_particles_->Loop() ) {
+      auto mass = particle.DataT<Particle>()->GetMass();
+      auto pid = particle.DataT<Particle>()->GetPid();
+      auto is_prim = particle[tru_is_primary].GetBool();
+      auto mom4 = particle.DataT<Particle>()->Get4MomentumByMass(mass);
+      double charge=0.0;
+      if( TDatabasePDG::Instance()->GetParticle( pid ) ){
+        charge= TDatabasePDG::Instance()->GetParticle( pid )->Charge() / 3.0;
+      }
+      if( fabs(charge) < 0.01 )
+        continue;
+      h1_phi_event_by_event_->Fill( mom4.Phi() );
+      if( !is_prim )
+        continue;
+      if( pid!=2212 )
+        continue;
+      h3_y_pT_phi_event_by_event_->Fill( mom4.Rapidity() - y_beam, mom4.Pt(), mom4.Phi() );
+    }
   }
 }
 //bool TracksProcessor::UseATI2() const { return false; }
