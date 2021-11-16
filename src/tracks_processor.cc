@@ -52,14 +52,14 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   out_protons_pT_var_ = out_tracks_->NewVariable( "protons_pT", FLOAT );
   out_pions_rapidity_var_ = out_tracks_->NewVariable( "pions_rapidity", FLOAT );
 
-  h2_phi_theta_event_by_event_ = new TH2F( "phi_theta_event_by_event", ";#phi;N particles in event", 6, -M_PI, M_PI, 6, 0.3, 1.5 );
+  h2_phi_theta_event_by_event_ = new TH2F( "phi_theta_event_by_event", ";#phi;N particles in event", 18, -M_PI, M_PI, 6, 0.3, 1.5 );
   std::vector<double> pt_axis;
   std::vector<double> theta_axis;
   std::vector<double> phi_axis;
   pt_axis = {0.0,     0.29375, 0.35625, 0.41875, 0.48125, 0.54375,
              0.61875, 0.70625, 0.81875, 1.01875, 2.0};
   for( int i=0; i<25; i+=1 ){theta_axis.push_back(0.3+i*0.05); }
-  for( int i=0; i<7; i++ ){phi_axis.push_back(-M_PI+(i*2*M_PI)/6.0);}
+  for( int i=0; i<37; i++ ){phi_axis.push_back(-M_PI+(i*2*M_PI)/36.0);}
 
   h3_theta_pT_phi_event_by_event_ = new TH3F( "h3_tru_y_pT_phi", ";#phi;",
                                              theta_axis.size()-1, theta_axis.data(),
