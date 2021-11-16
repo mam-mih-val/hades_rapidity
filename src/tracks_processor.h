@@ -89,8 +89,8 @@ private:
   std::string all_efficiency_file_;
   std::string deutrons_efficiency_file_;
 
-  TH1F* h1_phi_event_by_event_;
-  TH3F* h3_y_pT_phi_event_by_event_;
+  TH2F*h2_phi_theta_event_by_event_;
+  TH3F* h3_theta_pT_phi_event_by_event_;
 
   TFile* file_efficiency_3d_protons_{nullptr};
   TProfile3D* efficiency_3d_protons_;

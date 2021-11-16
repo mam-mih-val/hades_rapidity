@@ -52,19 +52,19 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   out_protons_pT_var_ = out_tracks_->NewVariable( "protons_pT", FLOAT );
   out_pions_rapidity_var_ = out_tracks_->NewVariable( "pions_rapidity", FLOAT );
 
-  h1_phi_event_by_event_ = new TH1F( "phi_event_by_event", ";#phi;", 6, -M_PI, M_PI );
+  h2_phi_theta_event_by_event_ = new TH2F( "phi_theta_event_by_event", ";#phi;N particles in event", 6, -M_PI, M_PI, 6, 0.3, 1.5 );
   std::vector<double> pt_axis;
-  std::vector<double> y_axis;
+  std::vector<double> theta_axis;
   std::vector<double> phi_axis;
   pt_axis = {0.0,     0.29375, 0.35625, 0.41875, 0.48125, 0.54375,
              0.61875, 0.70625, 0.81875, 1.01875, 2.0};
-  for( int i=0; i<16; i+=1 ){ y_axis.push_back(-0.75+i*0.1); }
+  for( int i=0; i<25; i+=1 ){theta_axis.push_back(0.3+i*0.05); }
   for( int i=0; i<7; i++ ){phi_axis.push_back(-M_PI+(i*2*M_PI)/6.0);}
 
-  h3_y_pT_phi_event_by_event_ = new TH3F( "h3_tru_y_pT_phi", ";#phi;",
-                                         y_axis.size()-1, y_axis.data(),
-                                         pt_axis.size()-1, pt_axis.data(),
-                                         phi_axis.size()-1, phi_axis.data());
+  h3_theta_pT_phi_event_by_event_ = new TH3F( "h3_tru_y_pT_phi", ";#phi;",
+                                             theta_axis.size()-1, theta_axis.data(),
+                                             pt_axis.size()-1, pt_axis.data(),
+                                             phi_axis.size()-1, phi_axis.data());
 
   try {
     in_sim_particles_ = GetInBranch("sim_tracks");
@@ -181,15 +181,16 @@ void TracksProcessor::UserExec() {
       if( efficiency_3d_protons_ && is_mc_ ){
         auto particle_phi = mom4.Phi();
         auto particle_pT = mom4.Pt();
-        auto particle_y = mom4.Rapidity() - y_beam;
-        auto sector_id = h1_phi_event_by_event_->FindBin(particle_phi);
-        auto n_particles_sector = h1_phi_event_by_event_->GetBinContent(sector_id);
-        auto y_bin = h3_y_pT_phi_event_by_event_->GetXaxis()->FindBin(particle_y);
-        auto pT_bin = h3_y_pT_phi_event_by_event_->GetYaxis()->FindBin(particle_pT);
-        auto n_particles_event = h3_y_pT_phi_event_by_event_->GetBinContent( y_bin, pT_bin, sector_id );
+        auto particle_theta = mom4.Theta();
+        auto sector_id = h2_phi_theta_event_by_event_->GetXaxis()->FindBin(particle_phi);
+        auto theta_id = h2_phi_theta_event_by_event_->GetYaxis()->FindBin(particle_theta);
+        auto n_particles_sector = h2_phi_theta_event_by_event_->GetBinContent(sector_id, theta_id);
+        auto theta_bin = h3_theta_pT_phi_event_by_event_->GetXaxis()->FindBin(particle_theta);
+        auto pT_bin =h3_theta_pT_phi_event_by_event_->GetYaxis()->FindBin(particle_pT);
+        auto n_particles_event = h3_theta_pT_phi_event_by_event_->GetBinContent(theta_bin, pT_bin, sector_id );
         auto not_biased_particles_sector = n_particles_sector - n_particles_event;
-        efficiency = efficiency_3d_protons_->GetBinContent( y_bin, pT_bin, not_biased_particles_sector );
-        efficiency =  efficiency > 0.3 ? 1.0 / efficiency : 0.0;
+        efficiency = efficiency_3d_protons_->GetBinContent( theta_bin, pT_bin, not_biased_particles_sector );
+        efficiency =  efficiency > 0.1 ? 1.0 / efficiency : 0.0;
       }
     }
     auto out_particle = out_tracks_->NewChannel();
@@ -291,7 +292,7 @@ void TracksProcessor::ReadEfficiencyHistos(){
   file_efficiency_3d_protons_ = TFile::Open(protons_efficiency_3d_file_.c_str(), "read");
   file_analysis_bins_efficiency_protons_ = TFile::Open(protons_analysis_bins_efficiency_file_.c_str(), "read");
   file_efficiency_all_ = TFile::Open(all_efficiency_file_.c_str(), "read");
-  file_efficiency_3d_protons_->GetObject( "p3_y_pT_npart_sector", efficiency_3d_protons_ );
+  file_efficiency_3d_protons_->GetObject( "p3_theta_pT_npart_sector", efficiency_3d_protons_ );
   int p=2;
   while(p<40){
     efficiency_protons_.emplace_back();
@@ -321,8 +322,8 @@ void TracksProcessor::ReadEfficiencyHistos(){
 }
 void TracksProcessor::CalculateNparticlesSector() {
   using AnalysisTree::Particle;
-  h1_phi_event_by_event_->Reset();
-  h3_y_pT_phi_event_by_event_->Reset();
+  h2_phi_theta_event_by_event_->Reset();
+  h3_theta_pT_phi_event_by_event_->Reset();
   float y_beam = data_header_->GetBeamRapidity();
   auto tru_is_primary = GetVar("sim_tracks/is_primary");
   if( is_mc_ ){
@@ -337,12 +338,12 @@ void TracksProcessor::CalculateNparticlesSector() {
       }
       if( fabs(charge) < 0.01 )
         continue;
-      h1_phi_event_by_event_->Fill( mom4.Phi() );
+      h2_phi_theta_event_by_event_->Fill( mom4.Phi(), mom4.Theta() );
       if( !is_prim )
         continue;
       if( pid!=2212 )
         continue;
-      h3_y_pT_phi_event_by_event_->Fill( mom4.Rapidity() - y_beam, mom4.Pt(), mom4.Phi() );
+      h3_theta_pT_phi_event_by_event_->Fill( mom4.Theta(), mom4.Pt(), mom4.Phi() );
     }
   }
 }
