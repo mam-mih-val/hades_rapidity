@@ -179,18 +179,17 @@ void TracksProcessor::UserExec() {
     } catch (std::exception&) {}
     if( pid == 2212 ){
       if( efficiency_3d_protons_ && is_mc_ ){
-        auto phi = mom4.Phi();
-        auto pT = mom4.Pt();
-        auto y = mom4.Rapidity() - y_beam;
-        auto sector_id = h1_phi_event_by_event_->FindBin( phi );
+        auto particle_phi = mom4.Phi();
+        auto particle_pT = mom4.Pt();
+        auto particle_y = mom4.Rapidity() - y_beam;
+        auto sector_id = h1_phi_event_by_event_->FindBin(particle_phi);
         auto n_particles_sector = h1_phi_event_by_event_->GetBinContent(sector_id);
-        auto y_bin = h3_y_pT_phi_event_by_event_->GetXaxis()->FindBin( y );
-        auto pT_bin = h3_y_pT_phi_event_by_event_->GetYaxis()->FindBin( pT );
+        auto y_bin = h3_y_pT_phi_event_by_event_->GetXaxis()->FindBin(particle_y);
+        auto pT_bin = h3_y_pT_phi_event_by_event_->GetYaxis()->FindBin(particle_pT);
         auto n_particles_event = h3_y_pT_phi_event_by_event_->GetBinContent( y_bin, pT_bin, sector_id );
         auto not_biased_particles_sector = n_particles_sector - n_particles_event;
         efficiency = efficiency_3d_protons_->GetBinContent( y_bin, pT_bin, not_biased_particles_sector );
-        if( efficiency > 0.3 )
-          efficiency = 1.0 / efficiency;
+        efficiency =  efficiency > 0.3 ? 1.0 / efficiency : 0.0;
       }
     }
     auto out_particle = out_tracks_->NewChannel();
