@@ -292,7 +292,9 @@ void TracksProcessor::ReadEfficiencyHistos(){
   file_efficiency_3d_protons_ = TFile::Open(protons_efficiency_3d_file_.c_str(), "read");
   file_analysis_bins_efficiency_protons_ = TFile::Open(protons_analysis_bins_efficiency_file_.c_str(), "read");
   file_efficiency_all_ = TFile::Open(all_efficiency_file_.c_str(), "read");
-  file_efficiency_3d_protons_->GetObject( "p3_theta_pT_npart_sector", efficiency_3d_protons_ );
+  if( file_efficiency_3d_protons_ )
+    file_efficiency_3d_protons_->GetObject("p3_theta_pT_npart_sector",
+                                           efficiency_3d_protons_);
   int p=2;
   while(p<40){
     efficiency_protons_.emplace_back();
