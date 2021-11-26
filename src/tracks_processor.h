@@ -51,6 +51,9 @@ private:
 
   ATI2::Branch *in_tracks_{nullptr};
   ATI2::Branch *out_tracks_{nullptr};
+  ATI2::Branch *out_event_header_{nullptr};
+  ATI2::Variable in_multiplicity_var_;
+  ATI2::Variable out_centrality_var_;
   ATI2::Variable geant_pid_var_;
   ATI2::Variable charge_var_;
   ATI2::Variable out_is_pion_;
@@ -82,18 +85,16 @@ private:
   ATI2::Variable out_sim_efficiency_;
 
   std::string protons_efficiency_file_;
-  std::string protons_efficiency_3d_file_;
+  std::string centrality_file_name_;
   std::string protons_analysis_bins_efficiency_file_;
   std::string pi_plus_efficiency_file_;
   std::string pi_minus_efficiency_file_;
   std::string all_efficiency_file_;
   std::string deutrons_efficiency_file_;
 
-  TH2F*h2_phi_theta_event_by_event_;
-  TH3F* h3_theta_pT_phi_event_by_event_;
+  TH1F* h1_centrality_bins_;
 
-  TFile* file_efficiency_3d_protons_{nullptr};
-  TProfile3D* efficiency_3d_protons_;
+  TFile* file_centrality_{nullptr};
   TFile* file_efficiency_protons_{nullptr};
   std::vector<TH2F*> efficiency_protons_;
   TFile* file_analysis_bins_efficiency_protons_{nullptr};
