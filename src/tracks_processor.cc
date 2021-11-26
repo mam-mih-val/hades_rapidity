@@ -54,7 +54,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
 
   out_event_header_ = NewBranch( "event_header_extra", EVENT_HEADER );
   in_multiplicity_var_ = GetVar("event_header/selected_tof_rpc_hits");
-  out_centrality_var_ = out_event_header_->NewVariable("centrality", FLOAT);
+  out_centrality_var_ = out_event_header_->NewVariable("selected_tof_rpc_hits_centrality", FLOAT);
 
   try {
     in_sim_particles_ = GetInBranch("sim_tracks");
