@@ -18,13 +18,11 @@ boost::program_options::options_description TracksProcessor::GetBoostOptions() {
 
   options_description desc(GetName() + " options");
   desc.add_options()
-      ("protons-efficiency", value(&protons_efficiency_file_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
-      ("centrality-file", value(&centrality_file_name_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
-      ("analysis-bins-efficiency", value(&protons_analysis_bins_efficiency_file_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
-      ("pi-plus-efficiency", value(&pi_plus_efficiency_file_)->default_value("../../efficiency_files/pi_plus_efficiency.root"), "Path to file with pi-plus' efficiency")
-      ("pi-minus-efficiency", value(&pi_minus_efficiency_file_)->default_value("../../efficiency_files/pi_minus_efficiency.root"), "Path to file with pi-minus' efficiency")
-      ("all-efficiency", value(&all_efficiency_file_)->default_value("../../efficiency_files/all_efficiency.root"), "Path to file with all efficiency' files")
-      ("deutrons-efficiency", value(&deutrons_efficiency_file_)->default_value("../../efficiency_files/pi_minus_efficiency.root"), "Path to file with pi-minus' efficiency");
+      ("protons-efficiency", value(&str_protons_efficiency_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
+      ("centrality-file", value(&str_centrality_file_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
+      ("efficiency-delta-phi", value(&str_efficiency_delta_phi_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
+      ("pi-plus-efficiency", value(&str_pi_plus_efficiency_)->default_value("../../efficiency_files/pi_plus_efficiency.root"), "Path to file with pi-plus' efficiency")
+      ("pi-minus-efficiency", value(&str_pi_minus_efficiency_)->default_value("../../efficiency_files/pi_minus_efficiency.root"), "Path to file with pi-minus' efficiency");
   return desc;
 }
 
@@ -32,32 +30,24 @@ void TracksProcessor::PreInit() {}
 
 void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   auto y_cm = data_header_->GetBeamRapidity();
-  beta_cm_ = tanh(y_cm);
   in_tracks_ = GetInBranch("mdc_vtx_tracks");
   event_header_ = GetInBranch("event_header");
-  centrality_var_ = GetVar( "event_header/selected_tof_rpc_hits_centrality" );
-  geant_pid_var_ = GetVar( "mdc_vtx_tracks/geant_pid" );
-  charge_var_ = GetVar( "mdc_vtx_tracks/charge" );
+
   out_tracks_ = NewBranch( "mdc_vtx_tracks_extra", PARTICLES );
+
   out_tracks_->CloneVariables(in_tracks_->GetConfig());
-  out_is_pion_ = out_tracks_->NewVariable( "is_pion", BOOLEAN );
-  out_is_positive_ = out_tracks_->NewVariable( "is_positive", BOOLEAN );
-  out_is_in_protons_acceptance_ = out_tracks_->NewVariable( "is_in_protons_acceptance", BOOLEAN );
+
   out_ycm_var_ = out_tracks_->NewVariable( "ycm", FLOAT );
   out_theta_var_ = out_tracks_->NewVariable( "theta", FLOAT );
-  out_eta_cm_var_ = out_tracks_->NewVariable( "eta_cm", FLOAT );
-  out_abs_ycm_var_ = out_tracks_->NewVariable( "abs_ycm", FLOAT );
   out_efficiency_var_ = out_tracks_->NewVariable( "efficiency", FLOAT );
-  out_protons_rapidity_var_ = out_tracks_->NewVariable( "protons_rapidity", FLOAT );
-  out_protons_pT_var_ = out_tracks_->NewVariable( "protons_pT", FLOAT );
-  out_pions_rapidity_var_ = out_tracks_->NewVariable( "pions_rapidity", FLOAT );
+  out_occ_weight_var_ = out_tracks_->NewVariable( "occ_weight", FLOAT );
 
   out_event_header_ = NewBranch( "event_header_extra", EVENT_HEADER );
-  in_multiplicity_var_ = GetVar("event_header/selected_tof_rpc_hits");
   out_centrality_var_ = out_event_header_->NewVariable("selected_tof_rpc_hits_centrality", FLOAT);
 
   try {
     in_sim_particles_ = GetInBranch("sim_tracks");
+    in_sim_header_ = GetInBranch("sim_header");
     is_mc_=true;
   } catch (std::exception&) {
     is_mc_=false;
@@ -67,17 +57,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
     out_sim_particles_ ->CloneVariables( in_sim_particles_->GetConfig() );
     out_sim_theta_var_ = out_sim_particles_->NewVariable( "theta", FLOAT );
     out_sim_ycm_var_ = out_sim_particles_->NewVariable( "ycm", FLOAT );
-    out_sim_eta_cm_var_ = out_sim_particles_->NewVariable( "eta_cm", FLOAT );
-    out_sim_abs_ycm_var_ = out_sim_particles_->NewVariable( "abs_ycm", FLOAT );
-    out_sim_protons_rapidity_var_ = out_sim_particles_->NewVariable( "protons_rapidity", FLOAT );
-    out_sim_protons_pT_var_ = out_sim_particles_->NewVariable( "protons_pT", FLOAT );
-    out_sim_pions_rapidity_var_ = out_sim_particles_->NewVariable( "pions_rapidity", FLOAT );
     out_sim_is_charged_ = out_sim_particles_->NewVariable( "is_charged", BOOLEAN );
-    out_sim_is_positive_ = out_sim_particles_->NewVariable( "is_positive", BOOLEAN );
-    out_sim_is_in_acceptance_ = out_sim_particles_->NewVariable( "is_in_acceptance", BOOLEAN );
-    out_sim_is_in_protons_acceptance_ = out_sim_particles_->NewVariable( "is_in_protons_acceptance", BOOLEAN );
-    out_sim_is_in_high_efficiency_ = out_sim_particles_->NewVariable( "is_in_high_efficiency", BOOLEAN );
-    out_sim_efficiency_ = out_sim_particles_->NewVariable( "efficiency", BOOLEAN );
   }
   ReadEfficiencyHistos();
   out_file_->cd();
@@ -85,202 +65,39 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
 
 void TracksProcessor::UserExec() {
   using AnalysisTree::Particle;
-  auto centrality = (*event_header_)[centrality_var_].GetVal();
+  auto centrality = (*event_header_)[GetVar( "event_header/selected_tof_rpc_hits_centrality" )].GetVal();
   auto centrality_class = (size_t) ( (centrality-2.5)/5.0 );
   if( h1_centrality_bins_ ){
     auto tof_rpc_hits = (*event_header_)[in_multiplicity_var_].GetInt();
     auto mult_bin = h1_centrality_bins_->GetXaxis()->FindBin(tof_rpc_hits);
     auto c_class = h1_centrality_bins_->GetBinContent(mult_bin);
-    centrality = 5.0*c_class-2.5;
+    centrality = 5.0f * c_class - 2.5f;
     (*out_event_header_)[out_centrality_var_].SetVal(centrality);
   }
-  float y_beam = data_header_->GetBeamRapidity();
-  out_tracks_->ClearChannels();
-  for ( auto in_track : in_tracks_->Loop() ) {
-    auto pid = in_track.DataT<Particle>()->GetPid();
-    auto geant_pid = in_track[geant_pid_var_].GetInt();
-    int charge=in_track[charge_var_].GetInt();
-    auto mass = in_track.DataT<Particle>()->GetMass();
-    if( pid != 0 ) {
-      if( TDatabasePDG::Instance()->GetParticle(pid) )
-        mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
-    }
-    auto mom4 = in_track.DataT<Particle>()->Get4MomentumByMass(mass);
-    auto mom4_cm = mom4;
-    mom4_cm.Boost({0.0, 0.0, -beta_cm_});
-    auto mass_protons = TDatabasePDG::Instance()->GetParticle(2212)->Mass();
-    auto pT = mom4.Pt();
-    auto p = mom4.P();
-    auto pz = mom4.Pz();
-    auto theta = mom4.Theta();
-    float y = mom4.Rapidity();
-    float y_cm = y- y_beam;
-    float E_protons = sqrtf(p * p + mass_protons*mass_protons );
-    float y_protons = 0.5f * ( logf( E_protons + pz) - logf( E_protons - pz) ) - y_beam;
-    TH2F* efficiency_histogram{nullptr};
-    TH2F* analysis_bins_efficiency_histogram{nullptr};
-    float efficiency{1.0};
-    float mean_efficiency{1.0};
-    try{
-      switch (pid) {
-      case 211:
-        efficiency_histogram = efficiency_pi_plus_.at(centrality_class);
-        break;
-      case -211:
-        efficiency_histogram = efficiency_pi_minus_.at(centrality_class);
-        break;
-      case 2212:
-        efficiency_histogram = efficiency_protons_.at(centrality_class);
-        analysis_bins_efficiency_histogram = analysis_bins_efficiency_protons_.at(centrality_class);
-        break;
-      default:
-        switch (geant_pid) {
-          case 45:
-            efficiency_histogram = efficiency_deutrons_.at(centrality_class);
-            break;
-        }
-      }
-      if (efficiency_histogram) {
-        auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_cm);
-        auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
-        efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
-      }
-      if (analysis_bins_efficiency_histogram) {
-        auto bin_y = analysis_bins_efficiency_histogram->GetXaxis()->FindBin(y_cm);
-        auto bin_pT = analysis_bins_efficiency_histogram->GetYaxis()->FindBin(pT);
-        mean_efficiency = analysis_bins_efficiency_histogram->GetBinContent(bin_y, bin_pT);
-      }
-      if( !efficiency_histogram ){
-        efficiency_histogram = efficiency_all_.at(centrality_class);
-        if( efficiency_histogram ){
-          auto bin_eta = efficiency_histogram->GetXaxis()->FindBin(mom4.PseudoRapidity());
-          auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT/(double) charge);
-          efficiency = efficiency_histogram->GetBinContent(bin_eta, bin_pT);
-        }
-      }
-    } catch (std::exception&) {}
-    if( efficiency > 0.3 && mean_efficiency > 0.3 )
-      efficiency = 1.0f/efficiency;
-    else
-      efficiency = 0.0;
-    double protons_efficiency=0.0;
-    try{
-      efficiency_histogram = efficiency_protons_.at(centrality_class);
-      if (efficiency_histogram) {
-        auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_protons);
-        auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
-        protons_efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
-      }
-    } catch (std::exception&) {}
-    auto out_particle = out_tracks_->NewChannel();
-    out_particle.CopyContents(in_track);
-    out_particle[out_ycm_var_].SetVal(y_cm);
-    out_particle[out_theta_var_].SetVal( (float) theta);
-    out_particle[out_eta_cm_var_].SetVal( (float) mom4_cm.PseudoRapidity());
-    out_particle[out_abs_ycm_var_].SetVal(fabsf(y_cm));
-    out_particle[out_efficiency_var_].SetVal(efficiency);
-    out_particle[out_protons_rapidity_var_].SetVal(y_protons);
-    out_particle[out_is_pion_].SetVal( abs(pid) == 211 );
-    out_particle[out_is_positive_].SetVal( charge > 0 );
-    out_particle[out_is_in_protons_acceptance_].SetVal( protons_efficiency > 0.1 );
-    in_track.DataT<Particle>()->SetMass(mass);
-  }
+  this->LoopRecTracks();
   if( is_mc_ ){
-    out_sim_particles_->ClearChannels();
-    for ( auto in_particle : in_sim_particles_->Loop() ) {
-      auto out_particle = out_sim_particles_->NewChannel();
-      out_particle.CopyContents(in_particle);
-      auto pid = in_particle.DataT<Particle>()->GetPid();
-      auto mass = in_particle.DataT<Particle>()->GetMass();
-      auto mom4 = in_particle.DataT<Particle>()->Get4MomentumByMass(mass);
-      auto mom4_cm = mom4;
-      mom4_cm.Boost( {0.0, 0.0, -beta_cm_} );
-      auto mass_protons = TDatabasePDG::Instance()->GetParticle(2212)->Mass();
-      auto pT = mom4.Pt();
-      auto theta = mom4.Theta();
-      auto p = mom4.P();
-      auto pz = mom4.Pz();
-      float y = mom4.Rapidity();
-      float y_cm = y- y_beam;
-      auto E_protons = sqrt(p * p + mass_protons*mass_protons );
-      float y_protons = 0.5 * ( log( E_protons + pz) - log( E_protons - pz) ) - y_beam;
-      int charge=0;
-      if( TDatabasePDG::Instance()->GetParticle(pid) )
-        charge = TDatabasePDG::Instance()->GetParticle(pid)->Charge() / 3;
-      else{
-        charge = (int)(pid / 1E+4) % (int)1e+3;
-      }
-      TH2F* efficiency_histogram{nullptr};
-      float efficiency{1.0};
-      try{
-        switch (pid) {
-        case 211:
-          efficiency_histogram = efficiency_pi_plus_.at(centrality_class);
-          break;
-        case -211:
-          efficiency_histogram = efficiency_pi_minus_.at(centrality_class);
-          break;
-        case 2212:
-          efficiency_histogram = efficiency_protons_.at(centrality_class);
-          break;
-        }
-        if (efficiency_histogram) {
-          auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_cm);
-          auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
-          efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
-        }
-      } catch (std::exception&) {}
-      std::random_device r;
-      // Choose a random mean between 1 and 6
-      std::default_random_engine e1(r());
-      std::uniform_real_distribution<double> uniform_dist(0, 1);
-      double r_num = uniform_dist(e1);
-      double p_hi = (4.95-2.5*theta)/1.2;
-      double p_lo = 0.4;
-      auto theta_lo = 0.3;
-      auto theta_hi = 1.5;
-      bool is_in_acceptance{true};
-      if( p < p_lo )
-        is_in_acceptance = false;
-      if( p > p_hi )
-        is_in_acceptance = false;
-      if( theta > theta_hi )
-        is_in_acceptance = false;
-      if( theta < theta_lo )
-        is_in_acceptance = false;
-      out_particle[out_sim_theta_var_].SetVal((float)mom4.Theta());
-      out_particle[out_sim_ycm_var_].SetVal(y_cm);
-      out_particle[out_sim_eta_cm_var_].SetVal( (float) mom4_cm.PseudoRapidity());
-      out_particle[out_sim_abs_ycm_var_].SetVal(fabsf(y_cm));
-      out_particle[out_sim_protons_rapidity_var_].SetVal(y_protons);
-      out_particle[out_sim_is_charged_].SetVal( charge != 0 );
-      out_particle[out_sim_is_positive_].SetVal( charge > 0 );
-      out_particle[out_sim_is_in_acceptance_].SetVal( is_in_acceptance );
-      out_particle[out_sim_is_in_high_efficiency_].SetVal( r_num < efficiency );
-      out_particle[out_sim_efficiency_].SetVal(  efficiency > 0.1 ? 1.0f/ (float) efficiency : 0.0f );
-      in_particle.DataT<Particle>()->SetMass(mass);
-    }
+    this->LoopSimParticles();
   }
 }
 
 void TracksProcessor::ReadEfficiencyHistos(){
-  file_efficiency_protons_ = TFile::Open(protons_efficiency_file_.c_str(), "read");
-  file_efficiency_pi_plus_ = TFile::Open(pi_plus_efficiency_file_.c_str(), "read");
-  file_efficiency_pi_minus_ = TFile::Open(pi_minus_efficiency_file_.c_str(), "read");
-  file_efficiency_deutrons_ = TFile::Open(deutrons_efficiency_file_.c_str(), "read");
-  file_centrality_ = TFile::Open(centrality_file_name_.c_str(), "read");
-  file_analysis_bins_efficiency_protons_ = TFile::Open(protons_analysis_bins_efficiency_file_.c_str(), "read");
-  file_efficiency_all_ = TFile::Open(all_efficiency_file_.c_str(), "read");
+  file_efficiency_protons_ = TFile::Open(str_protons_efficiency_.c_str(), "read");
+  file_efficiency_pi_plus_ = TFile::Open(str_pi_plus_efficiency_.c_str(), "read");
+  file_efficiency_pi_minus_ = TFile::Open(str_pi_minus_efficiency_.c_str(), "read");
+  file_centrality_ = TFile::Open(str_centrality_file_.c_str(), "read");
   if(file_centrality_)
     file_centrality_->GetObject("Centrality/TOFRPC_5pc_fixedCuts",h1_centrality_bins_);
+  // Initializing efficiency for occupancy correction
+  file_efficiency_delta_phi_ = TFile::Open( str_efficiency_delta_phi_.c_str(), "read" );
+  if( file_efficiency_delta_phi_ ){
+    file_efficiency_delta_phi_->GetObject("efficiency_solid_angle", h3_efficiency_delta_phi_);
+  }
+
   int p=2;
   while(p<40){
     efficiency_protons_.emplace_back();
     efficiency_pi_plus_.emplace_back();
     efficiency_pi_minus_.emplace_back();
-    efficiency_deutrons_.emplace_back();
-    efficiency_all_.emplace_back();
-    analysis_bins_efficiency_protons_.emplace_back();
     std::string name = "efficiency_"+std::to_string(p);
     if( file_efficiency_protons_ )
       file_efficiency_protons_->GetObject(name.c_str(), efficiency_protons_.back());
@@ -288,16 +105,108 @@ void TracksProcessor::ReadEfficiencyHistos(){
       file_efficiency_pi_plus_->GetObject(name.c_str(), efficiency_pi_plus_.back());
     if(file_efficiency_pi_minus_)
       file_efficiency_pi_minus_->GetObject(name.c_str(), efficiency_pi_minus_.back());
-    if(file_efficiency_deutrons_)
-      file_efficiency_deutrons_->GetObject(name.c_str(), efficiency_deutrons_.back());
-    if(file_analysis_bins_efficiency_protons_)
-      file_analysis_bins_efficiency_protons_->GetObject(name.c_str(), analysis_bins_efficiency_protons_.back());
-    if(file_analysis_bins_efficiency_protons_)
-      file_analysis_bins_efficiency_protons_->GetObject(name.c_str(), analysis_bins_efficiency_protons_.back());
-    name = "efficiency_"+std::to_string(p-2)+"-"+std::to_string(p+3);
-    if( file_efficiency_all_ )
-      file_efficiency_all_->GetObject(name.c_str(), efficiency_all_.back() );
     p+=5;
   }
 }
-//bool TracksProcessor::UseATI2() const { return false; }
+void TracksProcessor::LoopRecTracks() {
+  using AnalysisTree::Particle;
+  auto centrality = (*event_header_)[GetVar( "event_header/selected_tof_rpc_hits_centrality" )].GetVal();
+  auto centrality_class = (size_t) ( (centrality-2.5)/5.0 );
+  if( h1_centrality_bins_){
+    auto tof_rpc_hits = (*event_header_)[GetVar("event_header/selected_tof_rpc_hits")].GetInt();
+    auto mult_bin = h1_centrality_bins_->GetXaxis()->FindBin(tof_rpc_hits);
+    auto c_class = h1_centrality_bins_->GetBinContent(mult_bin);
+    centrality = 5.0*c_class-2.5;
+  }
+  auto psi_rp = 0.0;
+  if( is_mc_ ){
+    psi_rp = (*in_sim_header_)[GetVar( "sim_header/reaction_plane" )];
+  }
+  float y_beam = data_header_->GetBeamRapidity();
+  out_tracks_->ClearChannels();
+
+  for ( auto in_track : in_tracks_->Loop() ) {
+    auto pid = in_track.DataT<Particle>()->GetPid();
+    auto mass = in_track.DataT<Particle>()->GetMass();
+    if( pid != 0 ) {
+      if( TDatabasePDG::Instance()->GetParticle(pid) )
+        mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
+    }
+    auto mom4 = in_track.DataT<Particle>()->Get4MomentumByMass(mass);
+    auto pT = mom4.Pt();
+    auto p = mom4.P();
+    auto pz = mom4.Pz();
+    auto theta = mom4.Theta();
+    float y = mom4.Rapidity();
+    float y_cm = y - y_beam;
+    TH2F* efficiency_histogram{nullptr};
+    float efficiency{1.0};
+    if( pid == 211 ){
+      efficiency_histogram = centrality_class < efficiency_pi_plus_.size() ? efficiency_pi_plus_.at(centrality_class) : nullptr;
+    }
+    if( pid == -211 ){
+      efficiency_histogram = centrality_class < efficiency_pi_minus_.size() ? efficiency_pi_minus_.at(centrality_class) : nullptr;
+    }
+    if( pid == 2212 ){
+      efficiency_histogram = centrality_class < efficiency_protons_.size() ? efficiency_protons_.at(centrality_class) : nullptr;
+    }
+    if (efficiency_histogram) {
+      auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_cm);
+      auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
+      efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
+    }
+    auto occupancy_weight = 0.0;
+    if( pid == 2212 ){
+      if( h3_efficiency_delta_phi_ ){
+        auto delta_phi = AngleDifference( mom4.Phi(), psi_rp );
+        auto eff = h3_efficiency_delta_phi_->Interpolate( delta_phi, mom4.Theta(), centrality );
+        if( eff > 0.1 )
+          occupancy_weight = 1.0 / eff;
+      }
+    }
+    auto out_particle = out_tracks_->NewChannel();
+    out_particle.CopyContents(in_track);
+    out_particle[out_ycm_var_] = y_cm;
+    out_particle[out_theta_var_] = (float) theta;
+    out_particle[out_efficiency_var_] = efficiency > 0.1f ? 1.0f / efficiency : 0.0f;
+    out_particle[out_occ_weight_var_] = occupancy_weight;
+    out_particle.DataT<Particle>()->SetMass(mass);
+  }
+}
+void TracksProcessor::LoopSimParticles() {
+  using AnalysisTree::Particle;
+  auto centrality = (*event_header_)[GetVar( "event_header/selected_tof_rpc_hits_centrality" )].GetVal();
+  auto centrality_class = (size_t) ( (centrality-2.5)/5.0 );
+  if( h1_centrality_bins_){
+    auto tof_rpc_hits = (*event_header_)[GetVar("event_header/selected_tof_rpc_hits")].GetInt();
+    auto mult_bin = h1_centrality_bins_->GetXaxis()->FindBin(tof_rpc_hits);
+    auto c_class = h1_centrality_bins_->GetBinContent(mult_bin);
+    centrality = 5.0f * c_class - 2.5;
+  }
+  float y_beam = data_header_->GetBeamRapidity();
+
+  out_sim_particles_->ClearChannels();
+  for ( auto in_particle : in_sim_particles_->Loop() ) {
+    auto out_particle = out_sim_particles_->NewChannel();
+    out_particle.CopyContents(in_particle);
+    auto pid = in_particle.DataT<Particle>()->GetPid();
+    auto mass = in_particle.DataT<Particle>()->GetMass();
+    auto mom4 = in_particle.DataT<Particle>()->Get4MomentumByMass(mass);
+    auto pT = mom4.Pt();
+    auto theta = mom4.Theta();
+    auto p = mom4.P();
+    auto pz = mom4.Pz();
+    float y = mom4.Rapidity();
+    float y_cm = y- y_beam;
+    int charge=0;
+    if( TDatabasePDG::Instance()->GetParticle(pid) )
+      charge = TDatabasePDG::Instance()->GetParticle(pid)->Charge() / 3;
+    else{
+      charge = (int)(pid / 1E+4) % (int)1e+3;
+    }
+    out_particle[out_sim_theta_var_] = (float) mom4.Theta();
+    out_particle[out_sim_ycm_var_] = y_cm;
+    out_particle[out_sim_is_charged_] = charge != 0;
+    out_particle.DataT<Particle>()->SetMass(mass);
+  }
+}

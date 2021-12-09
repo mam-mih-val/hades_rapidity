@@ -37,76 +37,61 @@ public:
 
 protected:
 //  virtual bool UseATI2() const override;
-  void CalculateNparticlesSector();
+  void LoopRecTracks();
+  void LoopSimParticles();
 
 private:
   void ReadEfficiencyHistos();
+  double AngleDifference( double phi, double psi ){
+    auto delta_phi = phi - psi;
+    if( delta_phi < -M_PI )
+      delta_phi+=2*M_PI;
+    if( delta_phi > M_PI )
+      delta_phi-=2*M_PI;
+    return delta_phi;
+  }
   bool is_mc_=true;
-  double beta_cm_;
 
-  std::string out_tracks_branch_;
-
+  // Input brancehs 
   ATI2::Branch *event_header_{nullptr};
-  ATI2::Variable centrality_var_;
-
   ATI2::Branch *in_tracks_{nullptr};
-  ATI2::Branch *out_tracks_{nullptr};
+  ATI2::Branch *in_sim_particles_{nullptr};
+  ATI2::Branch *in_sim_header_{nullptr};
+  // Out event header
   ATI2::Branch *out_event_header_{nullptr};
   ATI2::Variable in_multiplicity_var_;
   ATI2::Variable out_centrality_var_;
-  ATI2::Variable geant_pid_var_;
-  ATI2::Variable charge_var_;
-  ATI2::Variable out_is_pion_;
-  ATI2::Variable out_is_positive_;
-  ATI2::Variable out_is_in_protons_acceptance_;
+  // Out Rec Particles 
+  ATI2::Branch *out_tracks_{nullptr};
   ATI2::Variable out_theta_var_;
   ATI2::Variable out_ycm_var_;
-  ATI2::Variable out_eta_cm_var_;
-  ATI2::Variable out_abs_ycm_var_;
   ATI2::Variable out_efficiency_var_;
-  ATI2::Variable out_protons_rapidity_var_;
-  ATI2::Variable out_protons_pT_var_;
-  ATI2::Variable out_pions_rapidity_var_;
-
-  ATI2::Branch *in_sim_particles_{nullptr};
+  ATI2::Variable out_occ_weight_var_;
+  // Out sim particles
   ATI2::Branch *out_sim_particles_{nullptr};
   ATI2::Variable out_sim_theta_var_;
   ATI2::Variable out_sim_ycm_var_;
-  ATI2::Variable out_sim_eta_cm_var_;
-  ATI2::Variable out_sim_abs_ycm_var_;
-  ATI2::Variable out_sim_protons_rapidity_var_;
-  ATI2::Variable out_sim_protons_pT_var_;
-  ATI2::Variable out_sim_pions_rapidity_var_;
   ATI2::Variable out_sim_is_charged_;
-  ATI2::Variable out_sim_is_positive_;
-  ATI2::Variable out_sim_is_in_acceptance_;
-  ATI2::Variable out_sim_is_in_protons_acceptance_;
-  ATI2::Variable out_sim_is_in_high_efficiency_;
-  ATI2::Variable out_sim_efficiency_;
-
-  std::string protons_efficiency_file_;
-  std::string centrality_file_name_;
-  std::string protons_analysis_bins_efficiency_file_;
-  std::string pi_plus_efficiency_file_;
-  std::string pi_minus_efficiency_file_;
-  std::string all_efficiency_file_;
-  std::string deutrons_efficiency_file_;
-
-  TH1F* h1_centrality_bins_;
-
+  // External centrality
+  std::string str_centrality_file_;
   TFile* file_centrality_{nullptr};
+  TH1F* h1_centrality_bins_{nullptr};
+  // Protons efficiency
+  std::string str_protons_efficiency_;
   TFile* file_efficiency_protons_{nullptr};
   std::vector<TH2F*> efficiency_protons_;
-  TFile* file_analysis_bins_efficiency_protons_{nullptr};
-  std::vector<TH2F*> analysis_bins_efficiency_protons_;
+  // Pi pos efficiency
+  std::string str_pi_plus_efficiency_;
   TFile* file_efficiency_pi_plus_{nullptr};
   std::vector<TH2F*> efficiency_pi_plus_;
+  // Pi neg efficiency
+  std::string str_pi_minus_efficiency_;
   TFile* file_efficiency_pi_minus_{nullptr};
   std::vector<TH2F*> efficiency_pi_minus_;
-  TFile* file_efficiency_deutrons_{nullptr};
-  std::vector<TH2F*> efficiency_deutrons_;
-  TFile* file_efficiency_all_{nullptr};
-  std::vector<TH2F*> efficiency_all_;
+  // Efficiency for occupancy correction
+  std::string str_efficiency_delta_phi_;
+  TFile* file_efficiency_delta_phi_{nullptr};
+  TH3F* h3_efficiency_delta_phi_;
 
 TASK_DEF(TracksProcessor, 0)
 };
