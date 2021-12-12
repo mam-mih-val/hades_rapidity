@@ -7,6 +7,10 @@
 
 #include <TFile.h>
 #include <TTree.h>
+#include <TH1F.h>
+#include <TH2F.h>
+#include <TProfile3D.h>
+#include <THnSparse.h>
 
 #include <at_task/UserTask.h>
 #include <at_task/Task.h>
@@ -17,9 +21,6 @@
 #include <AnalysisTree/BranchConfig.hpp>
 #include <AnalysisTree/EventHeader.hpp>
 
-#include <TH1F.h>
-#include <TH2F.h>
-#include <TProfile3D.h>
 #include <memory>
 #include <string>
 
@@ -88,11 +89,12 @@ private:
   std::string str_pi_minus_efficiency_;
   TFile* file_efficiency_pi_minus_{nullptr};
   std::vector<TH2F*> efficiency_pi_minus_;
-  // Efficiency for occupancy correction
-  std::string str_efficiency_delta_phi_;
-  TFile* file_efficiency_delta_phi_{nullptr};
-  TH3F* h3_efficiency_delta_phi_;
-
+  // Efficiency for occupancy correction based on pairs approach
+  std::string str_pair_efficiency_;
+  TFile*file_pair_efficiency_{nullptr};
+  TH3F*h3_2212_efficiency_centrality_phi_theta_;
+  TH3F*h3_all_efficiency_centrality_phi_theta_;
+  THnSparseF* hn_efficiency_pairs_centrality_phi_theta_;
 TASK_DEF(TracksProcessor, 0)
 };
 
