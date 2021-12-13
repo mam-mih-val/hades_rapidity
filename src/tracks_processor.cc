@@ -193,7 +193,7 @@ void TracksProcessor::LoopRecTracks() {
         auto pT1_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(1)->FindBin(mom4.Pt());
         auto phi1_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(2)->FindBin(sector_phi1);
         auto theta1_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(3)->FindBin(mom4.Theta());
-        auto phi2_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(3)->FindBin(sector_phi2);
+        auto phi2_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(4)->FindBin(sector_phi2);
         auto theta2_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(5)->FindBin(mom2.Theta());
         int index[] = {c_bin, pT1_bin, phi1_bin, theta1_bin, phi2_bin, theta2_bin};
         auto pair_efficiency = hn_efficiency_pairs_centrality_phi_theta_->GetBinContent( index );
