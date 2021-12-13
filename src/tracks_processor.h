@@ -93,7 +93,7 @@ private:
   std::string str_pair_efficiency_;
   TFile*file_pair_efficiency_{nullptr};
   TH3F*h3_2212_efficiency_centrality_phi_theta_;
-  TH3F*h3_all_efficiency_centrality_phi_theta_;
+  TH3F*h3_all_efficiency_centrality_pT_theta_;
   THnSparseF* hn_efficiency_pairs_centrality_phi_theta_;
 TASK_DEF(TracksProcessor, 0)
 };

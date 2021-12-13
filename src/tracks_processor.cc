@@ -90,11 +90,11 @@ void TracksProcessor::ReadEfficiencyHistos(){
   // Initializing efficiency for occupancy correction
   file_pair_efficiency_ = TFile::Open(str_pair_efficiency_.c_str(), "read" );
   if(file_pair_efficiency_){
-    file_pair_efficiency_->GetObject("h3_pid_efficiency_centrality_phi_theta_",
+    file_pair_efficiency_->GetObject("h3_pid_efficiency_centrality_pT_theta_",
                                      h3_2212_efficiency_centrality_phi_theta_);
-    file_pair_efficiency_->GetObject("h3_all_efficiency_centrality_phi_theta_",
-                                     h3_all_efficiency_centrality_phi_theta_);
-    file_pair_efficiency_->GetObject("hn_pair_efficiency_centrality_phi_theta_",
+    file_pair_efficiency_->GetObject("h3_all_efficiency_centrality_pT_theta_",
+                                     h3_all_efficiency_centrality_pT_theta_);
+    file_pair_efficiency_->GetObject("hn_pair_efficiency_centrality_pT_phi_theta_",
                                      hn_efficiency_pairs_centrality_phi_theta_);
   }
 
@@ -167,8 +167,8 @@ void TracksProcessor::LoopRecTracks() {
       double sector1 = floor(phi / (M_PI/3.0));
       double sector_center = sector1 *(M_PI/3.0) + M_PI/6.0;
       double sector_phi1 = AngleDifference(phi,sector_center);
-      auto phi_theta_efficiency = h3_2212_efficiency_centrality_phi_theta_->Interpolate(centrality, sector_phi1, mom4.Theta());
-      auto conditional_efficiency = phi_theta_efficiency;
+      auto pT_theta_efficiency = h3_2212_efficiency_centrality_phi_theta_->Interpolate(centrality, mom4.Pt(), mom4.Theta());
+      auto conditional_efficiency = pT_theta_efficiency;
       for( size_t idx2=0; idx2 < in_tracks_->size(); ++idx2){
         if(idx1==idx2)
           continue;
@@ -185,22 +185,24 @@ void TracksProcessor::LoopRecTracks() {
         if( fabs(sector1 - sector2) > 0.001 )
           continue;
         double sector_phi2 = AngleDifference(phi2,sector_center);
-        auto phi_theta_efficiency2 = h3_all_efficiency_centrality_phi_theta_->Interpolate(centrality, sector_phi2, mom2.Theta());
-        if( phi_theta_efficiency2 < 0.05 )
+        auto pT_theta_efficiency2 =
+            h3_all_efficiency_centrality_pT_theta_->Interpolate(centrality, mom2.Pt(), mom2.Theta());
+        if(pT_theta_efficiency2 < 0.05 )
           continue;
         auto c_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(0)->FindBin(centrality);
-        auto phi1_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(1)->FindBin(sector_phi1);
-        auto theta1_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(2)->FindBin(mom4.Theta());
+        auto pT1_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(1)->FindBin(mom4.Pt());
+        auto phi1_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(2)->FindBin(sector_phi1);
+        auto theta1_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(3)->FindBin(mom4.Theta());
         auto phi2_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(3)->FindBin(sector_phi2);
-        auto theta2_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(4)->FindBin(mom2.Theta());
-        int index[] = {c_bin, phi1_bin, theta1_bin, phi2_bin, theta2_bin};
+        auto theta2_bin = hn_efficiency_pairs_centrality_phi_theta_->GetAxis(5)->FindBin(mom2.Theta());
+        int index[] = {c_bin, pT1_bin, phi1_bin, theta1_bin, phi2_bin, theta2_bin};
         auto pair_efficiency = hn_efficiency_pairs_centrality_phi_theta_->GetBinContent( index );
         if( pair_efficiency < 0.05 )
           continue;
-        conditional_efficiency*= pair_efficiency / phi_theta_efficiency2 / phi_theta_efficiency;
+        conditional_efficiency*= pair_efficiency / pT_theta_efficiency2 / pT_theta_efficiency;
       }
       occupancy_weight = conditional_efficiency > 0.1 ? 1.0/conditional_efficiency : 0.0;
-      if( phi_theta_efficiency < 0.05 )
+      if(pT_theta_efficiency < 0.05 )
         occupancy_weight = 0.0;
     }
     auto out_particle = out_tracks_->NewChannel();
