@@ -39,7 +39,6 @@ protected:
 //  virtual bool UseATI2() const override;
   void LoopRecTracks();
   void LoopSimParticles();
-  void CalculateOccupancy();
 
 private:
   void ReadEfficiencyHistos();
@@ -68,7 +67,6 @@ private:
   ATI2::Variable out_ycm_var_;
   ATI2::Variable out_efficiency_var_;
   ATI2::Variable out_occ_weight_var_;
-  ATI2::Variable out_sector_weight_var_;
   // Out sim particles
   ATI2::Branch *out_sim_particles_{nullptr};
   ATI2::Variable out_sim_theta_var_;
@@ -94,11 +92,6 @@ private:
   std::string str_efficiency_delta_phi_;
   TFile* file_efficiency_delta_phi_{nullptr};
   TH3F* h3_efficiency_delta_phi_;
-  TProfile3D* p3_rec_pid_efficiency_theta_pT_track_density_{nullptr};
-
-  //Occupancy histograms
-  TH1F* h1_phi_distribution_in_event_{nullptr};
-  TH3F*h3_theta_phi_pT_distribution_in_event_{nullptr};
 
 TASK_DEF(TracksProcessor, 0)
 };

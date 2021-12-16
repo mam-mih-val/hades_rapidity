@@ -41,17 +41,9 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   out_theta_var_ = out_tracks_->NewVariable( "theta", FLOAT );
   out_efficiency_var_ = out_tracks_->NewVariable( "efficiency", FLOAT );
   out_occ_weight_var_ = out_tracks_->NewVariable( "occ_weight", FLOAT );
-  out_sector_weight_var_ = out_tracks_->NewVariable( "sector_weight", FLOAT );
 
   out_event_header_ = NewBranch( "event_header_extra", EVENT_HEADER );
   out_centrality_var_ = out_event_header_->NewVariable("selected_tof_rpc_hits_centrality", FLOAT);
-
-  h1_phi_distribution_in_event_ = new TH1F( "h1_phi_distribution_in_event_", "phi", 6, -M_PI, M_PI );
-  h3_theta_phi_pT_distribution_in_event_ = new TH3F("h3_theta_phi_pT_distribution_in_event_",
-                                                ";theta (rad); phi (rad); p_{T} (GeV/c)",
-                                                14, 0.2, 1.6,
-                                                6, -M_PI, M_PI,
-                                                10, 0, 2.0 );
 
   try {
     in_sim_particles_ = GetInBranch("sim_tracks");
@@ -82,7 +74,6 @@ void TracksProcessor::UserExec() {
     centrality = 5.0f * c_class - 2.5f;
     (*out_event_header_)[out_centrality_var_].SetVal(centrality);
   }
-  this->CalculateOccupancy();
   this->LoopRecTracks();
   if( is_mc_ ){
     this->LoopSimParticles();
@@ -100,7 +91,6 @@ void TracksProcessor::ReadEfficiencyHistos(){
   file_efficiency_delta_phi_ = TFile::Open( str_efficiency_delta_phi_.c_str(), "read" );
   if( file_efficiency_delta_phi_ ){
     file_efficiency_delta_phi_->GetObject("efficiency_solid_angle", h3_efficiency_delta_phi_);
-    file_efficiency_delta_phi_->GetObject("p3_rec_pid_efficiency_theta_pT_track_density_", p3_rec_pid_efficiency_theta_pT_track_density_);
   }
 
   int p=2;
@@ -166,7 +156,6 @@ void TracksProcessor::LoopRecTracks() {
       efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
     }
     auto occupancy_weight = 0.0;
-    auto sector_weight = 0.0;
     if( pid == 2212 ){
       if( h3_efficiency_delta_phi_ ){
         auto delta_phi = AngleDifference( mom4.Phi(), psi_rp );
@@ -177,18 +166,6 @@ void TracksProcessor::LoopRecTracks() {
         if( eff > 0.1 )
           occupancy_weight = 1.0 / eff;
       }
-      if( p3_rec_pid_efficiency_theta_pT_track_density_ ){
-        auto theta_bin = h3_theta_phi_pT_distribution_in_event_->GetXaxis()->FindBin(mom4.Theta());
-        auto phi_bin = h3_theta_phi_pT_distribution_in_event_->GetYaxis()->FindBin(mom4.Phi());
-        auto pT_bin = h3_theta_phi_pT_distribution_in_event_->GetZaxis()->FindBin(mom4.Pt());
-        auto n_rec = h3_theta_phi_pT_distribution_in_event_->GetBinContent( theta_bin, phi_bin, pT_bin );
-        auto ntracks_sector = h1_phi_distribution_in_event_->GetBinContent(phi_bin);
-        auto occupancy_unbiased = ntracks_sector-n_rec;
-        auto occ_bin = p3_rec_pid_efficiency_theta_pT_track_density_->GetZaxis()->FindBin( occupancy_unbiased );
-        auto eff = p3_rec_pid_efficiency_theta_pT_track_density_->GetBinContent( theta_bin, pT_bin, occ_bin );
-        if( eff > 0.1 )
-          sector_weight = 1.0 / eff;
-      }
     }
     auto out_particle = out_tracks_->NewChannel();
     out_particle.CopyContents(in_track);
@@ -196,7 +173,6 @@ void TracksProcessor::LoopRecTracks() {
     out_particle[out_theta_var_] = (float) theta;
     out_particle[out_efficiency_var_] = efficiency > 0.1f ? 1.0f / efficiency : 0.0f;
     out_particle[out_occ_weight_var_] = occupancy_weight;
-    out_particle[out_sector_weight_var_] = sector_weight;
     out_particle.DataT<Particle>()->SetMass(mass);
   }
 }
@@ -235,38 +211,5 @@ void TracksProcessor::LoopSimParticles() {
     out_particle[out_sim_ycm_var_] = y_cm;
     out_particle[out_sim_is_charged_] = charge != 0;
     out_particle.DataT<Particle>()->SetMass(mass);
-  }
-}
-void TracksProcessor::CalculateOccupancy() {
-  using AnalysisTree::Particle;
-  h1_phi_distribution_in_event_->Reset("ICESM");
-  h3_theta_phi_pT_distribution_in_event_->Reset();
-  auto rec_chi2_var = GetVar("mdc_vtx_tracks/chi2");
-  auto rec_dca_xy_var = GetVar("mdc_vtx_tracks/dca_xy");
-  auto rec_dca_z_var = GetVar("mdc_vtx_tracks/dca_z");
-  for ( auto in_track : in_tracks_->Loop() ) {
-    auto pid = in_track.DataT<Particle>()->GetPid();
-    auto mass = in_track.DataT<Particle>()->GetMass();
-    if( pid != 0 ) {
-      if( TDatabasePDG::Instance()->GetParticle(pid) )
-        mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
-    }
-    auto chi2 = in_track[rec_chi2_var].GetVal();
-    auto dca_xy = in_track[rec_dca_xy_var].GetVal();
-    auto dca_z = in_track[rec_dca_z_var].GetVal();
-    auto mom4 = in_track.DataT<Particle>()->Get4MomentumByMass(mass);
-    auto pT = mom4.Pt();
-    auto theta = mom4.Theta();
-    auto phi = mom4.Phi();
-    if( chi2 > 100 )
-      continue;
-    h1_phi_distribution_in_event_->Fill( phi );
-    if ( -10 > dca_xy || dca_xy > 10 )
-      continue;
-    if ( -10 > dca_z || dca_z > 10 )
-      continue;
-    if( pid != 2212 )
-      continue;
-    h3_theta_phi_pT_distribution_in_event_->Fill( theta, phi, pT );
   }
 }
