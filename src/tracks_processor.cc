@@ -171,7 +171,7 @@ void TracksProcessor::LoopRecTracks() {
     out_particle.CopyContents(in_track);
     out_particle[out_ycm_var_] = y_cm;
     out_particle[out_theta_var_] = (float) theta;
-    out_particle[out_efficiency_var_] = efficiency > 0.1f ? 1.0f / efficiency : 0.0f;
+    out_particle[out_efficiency_var_] = efficiency > 0.3f ? 1.0f / efficiency : 0.0f;
     out_particle[out_occ_weight_var_] = occupancy_weight;
     out_particle.DataT<Particle>()->SetMass(mass);
   }
