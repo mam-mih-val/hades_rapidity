@@ -41,7 +41,7 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
   out_theta_var_ = out_tracks_->NewVariable( "theta", FLOAT );
   out_efficiency_var_ = out_tracks_->NewVariable( "efficiency", FLOAT );
   out_occ_weight_var_ = out_tracks_->NewVariable( "occ_weight", FLOAT );
-  out_fabs_pid_var_ = out_tracks_->NewVariable( "fabs_pid", INTEGER );
+  out_fabs_pid_var_ = out_tracks_->NewVariable( "abs_pid", INTEGER );
 
   out_event_header_ = NewBranch( "event_header_extra", EVENT_HEADER );
   out_centrality_var_ = out_event_header_->NewVariable("selected_tof_rpc_hits_centrality", FLOAT);
@@ -174,7 +174,7 @@ void TracksProcessor::LoopRecTracks() {
     out_particle[out_theta_var_] = (float) theta;
     out_particle[out_efficiency_var_] = efficiency > 0.3f ? 1.0f / efficiency : 0.0f;
     out_particle[out_occ_weight_var_] = occupancy_weight;
-    out_particle[out_fabs_pid_var_] = (int) fabs(pid);
+    out_particle[out_fabs_pid_var_] = (int) abs(pid);
     out_particle.DataT<Particle>()->SetMass(mass);
   }
 }
