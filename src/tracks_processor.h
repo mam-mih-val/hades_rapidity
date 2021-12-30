@@ -67,6 +67,7 @@ private:
   ATI2::Variable out_ycm_var_;
   ATI2::Variable out_efficiency_var_;
   ATI2::Variable out_occ_weight_var_;
+  ATI2::Variable out_fabs_pid_var_;
   // Out sim particles
   ATI2::Branch *out_sim_particles_{nullptr};
   ATI2::Variable out_sim_theta_var_;
