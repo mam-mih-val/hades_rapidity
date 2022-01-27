@@ -18,6 +18,8 @@ boost::program_options::options_description TracksProcessor::GetBoostOptions() {
 
   options_description desc(GetName() + " options");
   desc.add_options()
+      ("q-vector-file", value(&str_qvector_file_name_), "Path to the file containing Q-vectors")
+      ("q-vector-name", value(&str_qvector_name_), "Path to the file containing Q-vectors")
       ("protons-efficiency", value(&str_protons_efficiency_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
       ("centrality-file", value(&str_centrality_file_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
       ("efficiency-delta-phi", value(&str_efficiency_delta_phi_)->default_value("../../efficiency_files/protons_efficiency.root"), "Path to file with proton's efficiency")
@@ -66,6 +68,8 @@ void TracksProcessor::UserInit(std::map<std::string, void *> &Map) {
 
 void TracksProcessor::UserExec() {
   using AnalysisTree::Particle;
+  if( tree_qvector_ )
+    tree_qvector_->GetEntry(qvector_event_);
   auto centrality = (*event_header_)[GetVar( "event_header/selected_tof_rpc_hits_centrality" )].GetVal();
   auto centrality_class = (size_t) ( (centrality-2.5)/5.0 );
   if( h1_centrality_bins_ ){
@@ -79,6 +83,7 @@ void TracksProcessor::UserExec() {
   if( is_mc_ ){
     this->LoopSimParticles();
   }
+  qvector_event_++;
 }
 
 void TracksProcessor::ReadEfficiencyHistos(){
@@ -94,6 +99,19 @@ void TracksProcessor::ReadEfficiencyHistos(){
     file_efficiency_delta_phi_->GetObject("efficiency_solid_angle", h3_efficiency_delta_phi_);
   }
 
+  file_qvector_ = TFile::Open(str_qvector_file_name_.c_str());
+  if( !file_qvector_ && !str_qvector_file_name_.empty() )
+    std::cout << "File "+str_qvector_file_name_+" does not exist" << std::endl;
+  if( file_qvector_ ) {
+    file_qvector_->GetObject("tree", tree_qvector_);
+    if (!tree_qvector_)
+      throw std::runtime_error("There is no tree in file " +
+                               str_qvector_file_name_);
+    tree_qvector_->SetBranchAddress(str_qvector_name_.c_str(), &dc_qvector_);
+    if (!dc_qvector_)
+      throw std::runtime_error("There is no branch " + str_qvector_name_ +
+                               " in tree");
+  }
   int p=2;
   while(p<40){
     efficiency_protons_.emplace_back();
@@ -108,6 +126,8 @@ void TracksProcessor::ReadEfficiencyHistos(){
       file_efficiency_pi_minus_->GetObject(name.c_str(), efficiency_pi_minus_.back());
     p+=5;
   }
+  out_file_->cd();
+
 }
 void TracksProcessor::LoopRecTracks() {
   using AnalysisTree::Particle;
@@ -119,9 +139,15 @@ void TracksProcessor::LoopRecTracks() {
     auto c_class = h1_centrality_bins_->GetBinContent(mult_bin);
     centrality = 5.0*c_class-2.5;
   }
-  auto psi_rp = 0.0;
-  if( is_mc_ ){
-    psi_rp = (*in_sim_header_)[GetVar( "sim_header/reaction_plane" )];
+  auto psi_ep = 0.0;
+  if( dc_qvector_ ){
+    auto qvec = dc_qvector_->At(0);
+    auto mag = qvec.mag(1);
+    if( fabs(mag) < std::numeric_limits<double>::min() )
+      return;
+    auto x_qvec = qvec.x(1);
+    auto y_qvec = qvec.y(1);
+    psi_ep = atan2(y_qvec, x_qvec);
   }
   float y_beam = data_header_->GetBeamRapidity();
   out_tracks_->ClearChannels();
@@ -159,7 +185,7 @@ void TracksProcessor::LoopRecTracks() {
     auto occupancy_weight = 0.0;
     if( pid == 2212 ){
       if( h3_efficiency_delta_phi_ ){
-        auto delta_phi = AngleDifference( mom4.Phi(), psi_rp );
+        auto delta_phi = AngleDifference( mom4.Phi(), psi_ep);
         auto dphi_bin = h3_efficiency_delta_phi_->GetXaxis()->FindBin(delta_phi);
         auto theta_bin = h3_efficiency_delta_phi_->GetYaxis()->FindBin(mom4.Theta());
         auto c_bin = h3_efficiency_delta_phi_->GetZaxis()->FindBin(centrality);

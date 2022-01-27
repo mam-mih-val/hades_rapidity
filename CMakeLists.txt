@@ -14,5 +14,6 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(ATTaskSkeleton)
 
 find_package(ROOT REQUIRED COMPONENTS RIO Tree)
+find_package(QnTools REQUIRED)
 
 add_subdirectory(src)

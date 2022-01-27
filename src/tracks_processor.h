@@ -17,6 +17,9 @@
 #include <AnalysisTree/BranchConfig.hpp>
 #include <AnalysisTree/EventHeader.hpp>
 
+#include <DataContainer.hpp>
+#include <QVector.hpp>
+
 #include <TH1F.h>
 #include <TH2F.h>
 #include <TProfile3D.h>
@@ -93,6 +96,13 @@ private:
   std::string str_efficiency_delta_phi_;
   TFile* file_efficiency_delta_phi_{nullptr};
   TH3F* h3_efficiency_delta_phi_;
+
+  std::string str_qvector_file_name_;
+  TFile* file_qvector_{nullptr};
+  TTree* tree_qvector_{nullptr};
+  std::string str_qvector_name_;
+  Qn::DataContainer<Qn::QVector>* dc_qvector_{nullptr};
+  int qvector_event_{0};
 
 TASK_DEF(TracksProcessor, 0)
 };
