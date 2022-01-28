@@ -80,6 +80,7 @@ void TracksProcessor::UserExec() {
     centrality = 5.0f * c_class - 2.5f;
     (*out_event_header_)[out_centrality_var_].SetVal(centrality);
   }
+  out_tracks_->ClearChannels();
   double c_eff = 1e-3;
   while( c_eff < 5e-3 ){
     this->LoopRecTracks(c_eff);
@@ -156,7 +157,6 @@ void TracksProcessor::LoopRecTracks( double c_eff ) {
     psi_ep = atan2(y_qvec, x_qvec);
   }
   float y_beam = data_header_->GetBeamRapidity();
-  out_tracks_->ClearChannels();
 
   for ( auto in_track : in_tracks_->Loop() ) {
     auto pid = in_track.DataT<Particle>()->GetPid();
