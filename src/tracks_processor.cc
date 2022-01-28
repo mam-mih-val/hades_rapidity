@@ -81,10 +81,10 @@ void TracksProcessor::UserExec() {
     (*out_event_header_)[out_centrality_var_].SetVal(centrality);
   }
   out_tracks_->ClearChannels();
-  double c_eff = 1e-3;
+  double c_eff = 3e-3;
   while( c_eff < 5e-3 ){
     this->LoopRecTracks(c_eff);
-    c_eff+=2.5e-4;
+    c_eff+=2e-4;
   }
   if( is_mc_ ){
     this->LoopSimParticles();
