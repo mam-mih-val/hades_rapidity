@@ -40,7 +40,7 @@ public:
 
 protected:
 //  virtual bool UseATI2() const override;
-  void LoopRecTracks();
+  void LoopRecTracks(double c_eff=0.002 );
   void LoopSimParticles();
 
 private:
@@ -70,6 +70,7 @@ private:
   ATI2::Variable out_ycm_var_;
   ATI2::Variable out_efficiency_var_;
   ATI2::Variable out_occ_weight_var_;
+  ATI2::Variable out_c_eff_var_;
   ATI2::Variable out_fabs_pid_var_;
   // Out sim particles
   ATI2::Branch *out_sim_particles_{nullptr};
@@ -95,7 +96,7 @@ private:
   // Efficiency for occupancy correction
   std::string str_efficiency_delta_phi_;
   TFile* file_efficiency_delta_phi_{nullptr};
-  TH3F* h3_efficiency_delta_phi_;
+  TH3F*h3_npart_delta_phi_theta_centrality_;
 
   std::string str_qvector_file_name_;
   TFile* file_qvector_{nullptr};
