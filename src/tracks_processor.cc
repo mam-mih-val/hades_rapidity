@@ -81,11 +81,7 @@ void TracksProcessor::UserExec() {
     (*out_event_header_)[out_centrality_var_].SetVal(centrality);
   }
   out_tracks_->ClearChannels();
-  double c_eff = 5e-3;
-  while( c_eff < 7e-3 ){
-    this->LoopRecTracks(c_eff);
-    c_eff+=2e-4;
-  }
+  this->LoopRecTracks();
   if( is_mc_ ){
     this->LoopSimParticles();
   }
@@ -136,82 +132,117 @@ void TracksProcessor::ReadEfficiencyHistos(){
   out_file_->cd();
 
 }
-void TracksProcessor::LoopRecTracks( double c_eff ) {
+void TracksProcessor::LoopRecTracks() {
   using AnalysisTree::Particle;
   auto centrality = (*event_header_)[GetVar( "event_header/selected_tof_rpc_hits_centrality" )].GetVal();
   auto centrality_class = (size_t) ( (centrality-2.5)/5.0 );
-  if( h1_centrality_bins_){
-    auto tof_rpc_hits = (*event_header_)[GetVar("event_header/selected_tof_rpc_hits")].GetInt();
+  if (h1_centrality_bins_) {
+    auto tof_rpc_hits =
+        (*event_header_)[GetVar("event_header/selected_tof_rpc_hits")]
+            .GetInt();
     auto mult_bin = h1_centrality_bins_->GetXaxis()->FindBin(tof_rpc_hits);
     auto c_class = h1_centrality_bins_->GetBinContent(mult_bin);
-    centrality = 5.0*c_class-2.5;
+    centrality = 5.0 * c_class - 2.5;
   }
   auto psi_ep = 0.0;
-  if( dc_qvector_ ){
+  if (dc_qvector_) {
     auto qvec = dc_qvector_->At(0);
     auto mag = qvec.mag(1);
-    if( fabs(mag) < std::numeric_limits<double>::min() )
+    if (fabs(mag) < std::numeric_limits<double>::min())
       return;
     auto x_qvec = qvec.x(1);
     auto y_qvec = qvec.y(1);
     psi_ep = atan2(y_qvec, x_qvec);
   }
   float y_beam = data_header_->GetBeamRapidity();
-
-  for ( auto in_track : in_tracks_->Loop() ) {
-    auto pid = in_track.DataT<Particle>()->GetPid();
-    auto mass = in_track.DataT<Particle>()->GetMass();
-    if( pid != 0 ) {
-      if( TDatabasePDG::Instance()->GetParticle(pid) )
-        mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
-    }
-    auto mom4 = in_track.DataT<Particle>()->Get4MomentumByMass(mass);
-    auto pT = mom4.Pt();
-    auto p = mom4.P();
-    auto pz = mom4.Pz();
-    auto theta = mom4.Theta();
-    float y = mom4.Rapidity();
-    float y_cm = y - y_beam;
-    TH2F* efficiency_histogram{nullptr};
-    float efficiency{1.0};
-    if( pid == 211 ){
-      efficiency_histogram = centrality_class < efficiency_pi_plus_.size() ? efficiency_pi_plus_.at(centrality_class) : nullptr;
-    }
-    if( pid == -211 ){
-      efficiency_histogram = centrality_class < efficiency_pi_minus_.size() ? efficiency_pi_minus_.at(centrality_class) : nullptr;
-    }
-    if( pid == 2212 ){
-      efficiency_histogram = centrality_class < efficiency_protons_.size() ? efficiency_protons_.at(centrality_class) : nullptr;
-    }
-    if (efficiency_histogram) {
-      auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_cm);
-      auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
-      efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
-    }
-    auto occupancy_weight = 0.0;
-    if(h3_npart_delta_phi_theta_centrality_){
-      if( pid == 2212 ){
-        auto delta_phi = AngleDifference( mom4.Phi(), psi_ep);
-        auto dphi_bin =
-            h3_npart_delta_phi_theta_centrality_->GetXaxis()->FindBin(delta_phi);
-        auto theta_bin =
-            h3_npart_delta_phi_theta_centrality_->GetYaxis()->FindBin(mom4.Theta());
-        auto c_bin = h3_npart_delta_phi_theta_centrality_->GetZaxis()->FindBin(centrality);
-        auto n_tracks = h3_npart_delta_phi_theta_centrality_->GetBinContent( dphi_bin, theta_bin, c_bin );
-        auto eff = 0.98 - c_eff * pow(n_tracks, 2);
-        if( eff > 0.1 )
-          occupancy_weight = 1.0 / eff;
+  double c_eff_protons = 0.0045;
+  double c_eff_pi_neg = 0.00;
+  while( c_eff_pi_neg < 0.1 ) {
+    for (auto in_track : in_tracks_->Loop()) {
+      auto pid = in_track.DataT<Particle>()->GetPid();
+      auto mass = in_track.DataT<Particle>()->GetMass();
+      if (pid != 0) {
+        if (TDatabasePDG::Instance()->GetParticle(pid))
+          mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
       }
+      auto mom4 = in_track.DataT<Particle>()->Get4MomentumByMass(mass);
+      auto pT = mom4.Pt();
+      auto p = mom4.P();
+      auto pz = mom4.Pz();
+      auto theta = mom4.Theta();
+      float y = mom4.Rapidity();
+      float y_cm = y - y_beam;
+      TH2F *efficiency_histogram{nullptr};
+      float efficiency{1.0};
+      if (pid == 211) {
+        efficiency_histogram = centrality_class < efficiency_pi_plus_.size()
+                                   ? efficiency_pi_plus_.at(centrality_class)
+                                   : nullptr;
+      }
+      if (pid == -211) {
+        efficiency_histogram = centrality_class < efficiency_pi_minus_.size()
+                                   ? efficiency_pi_minus_.at(centrality_class)
+                                   : nullptr;
+      }
+      if (pid == 2212) {
+        efficiency_histogram = centrality_class < efficiency_protons_.size()
+                                   ? efficiency_protons_.at(centrality_class)
+                                   : nullptr;
+      }
+      if (efficiency_histogram) {
+        auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_cm);
+        auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
+        efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
+      }
+      auto occupancy_weight = 0.0;
+      if (h3_npart_delta_phi_theta_centrality_) {
+        if (pid == 2212) {
+          auto delta_phi = AngleDifference(mom4.Phi(), psi_ep);
+          auto dphi_bin =
+              h3_npart_delta_phi_theta_centrality_->GetXaxis()->FindBin(
+                  delta_phi);
+          auto theta_bin =
+              h3_npart_delta_phi_theta_centrality_->GetYaxis()->FindBin(
+                  mom4.Theta());
+          auto c_bin =
+              h3_npart_delta_phi_theta_centrality_->GetZaxis()->FindBin(
+                  centrality);
+          auto n_tracks = h3_npart_delta_phi_theta_centrality_->GetBinContent(
+              dphi_bin, theta_bin, c_bin);
+          auto eff = 0.98 - c_eff_protons * pow(n_tracks, 2);
+          if (eff > 0.1)
+            occupancy_weight = 1.0 / eff;
+        }
+        if (pid == -211) {
+          auto delta_phi = AngleDifference(mom4.Phi(), psi_ep);
+          auto dphi_bin =
+              h3_npart_delta_phi_theta_centrality_->GetXaxis()->FindBin(
+                  delta_phi);
+          auto theta_bin =
+              h3_npart_delta_phi_theta_centrality_->GetYaxis()->FindBin(
+                  mom4.Theta());
+          auto c_bin =
+              h3_npart_delta_phi_theta_centrality_->GetZaxis()->FindBin(
+                  centrality);
+          auto n_tracks = h3_npart_delta_phi_theta_centrality_->GetBinContent(
+              dphi_bin, theta_bin, c_bin);
+          auto eff = 0.98 - c_eff_pi_neg * pow(n_tracks, 1);
+          if (eff > 0.1)
+            occupancy_weight = 1.0 / eff;
+        }
+      }
+      auto out_particle = out_tracks_->NewChannel();
+      out_particle.CopyContents(in_track);
+      out_particle[out_ycm_var_] = y_cm;
+      out_particle[out_theta_var_] = (float)theta;
+      out_particle[out_efficiency_var_] =
+          efficiency > 0.3f ? 1.0f / efficiency : 0.0f;
+      out_particle[out_occ_weight_var_] = occupancy_weight;
+      out_particle[out_fabs_pid_var_] = (int)abs(pid);
+      out_particle[out_c_eff_var_] = (float)c_eff_protons;
+      out_particle.DataT<Particle>()->SetMass(mass);
     }
-    auto out_particle = out_tracks_->NewChannel();
-    out_particle.CopyContents(in_track);
-    out_particle[out_ycm_var_] = y_cm;
-    out_particle[out_theta_var_] = (float) theta;
-    out_particle[out_efficiency_var_] = efficiency > 0.3f ? 1.0f / efficiency : 0.0f;
-    out_particle[out_occ_weight_var_] = occupancy_weight;
-    out_particle[out_fabs_pid_var_] = (int) abs(pid);
-    out_particle[out_c_eff_var_] = (float) c_eff;
-    out_particle.DataT<Particle>()->SetMass(mass);
+    c_eff_pi_neg+=0.01;
   }
 }
 void TracksProcessor::LoopSimParticles() {

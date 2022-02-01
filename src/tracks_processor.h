@@ -40,7 +40,7 @@ public:
 
 protected:
 //  virtual bool UseATI2() const override;
-  void LoopRecTracks(double c_eff=0.002 );
+  void LoopRecTracks();
   void LoopSimParticles();
 
 private:
