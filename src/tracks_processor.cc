@@ -195,6 +195,7 @@ void TracksProcessor::LoopRecTracks() {
         efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
       }
       auto occupancy_weight = 0.0;
+      auto c_eff=0.0;
       if (h3_npart_delta_phi_theta_centrality_) {
         if (pid == 2212) {
           auto delta_phi = AngleDifference(mom4.Phi(), psi_ep);
@@ -212,6 +213,7 @@ void TracksProcessor::LoopRecTracks() {
           auto eff = 0.98 - c_eff_protons * pow(n_tracks, 2);
           if (eff > 0.1)
             occupancy_weight = 1.0 / eff;
+          c_eff = c_eff_protons;
         }
         if (pid == -211) {
           auto delta_phi = AngleDifference(mom4.Phi(), psi_ep);
@@ -229,6 +231,7 @@ void TracksProcessor::LoopRecTracks() {
           auto eff = 0.98 - c_eff_pi_neg * pow(n_tracks, 1);
           if (eff > 0.1)
             occupancy_weight = 1.0 / eff;
+          c_eff = c_eff_pi_neg;
         }
       }
       auto out_particle = out_tracks_->NewChannel();
@@ -239,7 +242,7 @@ void TracksProcessor::LoopRecTracks() {
           efficiency > 0.3f ? 1.0f / efficiency : 0.0f;
       out_particle[out_occ_weight_var_] = occupancy_weight;
       out_particle[out_fabs_pid_var_] = (int)abs(pid);
-      out_particle[out_c_eff_var_] = (float)c_eff_protons;
+      out_particle[out_c_eff_var_] = (float)c_eff;
       out_particle.DataT<Particle>()->SetMass(mass);
     }
     c_eff_pi_neg+=0.02;
