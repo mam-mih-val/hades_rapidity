@@ -156,8 +156,9 @@ void TracksProcessor::LoopRecTracks() {
   }
   float y_beam = data_header_->GetBeamRapidity();
   double c_eff_protons = 0.0045;
-  double c_eff_pi_neg = 0.071;
-  while( c_eff_pi_neg < 0.09 ) {
+  double c_eff_pi_neg = 0.05;
+  double c_eff_pi_pos = 0.01;
+  while( c_eff_pi_pos < 0.101 ) {
     for (auto in_track : in_tracks_->Loop()) {
       auto pid = in_track.DataT<Particle>()->GetPid();
       auto mass = in_track.DataT<Particle>()->GetMass();
@@ -233,6 +234,24 @@ void TracksProcessor::LoopRecTracks() {
             occupancy_weight = 1.0 / eff;
           c_eff = c_eff_pi_neg;
         }
+        if (pid == 211) {
+          auto delta_phi = AngleDifference(mom4.Phi(), psi_ep);
+          auto dphi_bin =
+              h3_npart_delta_phi_theta_centrality_->GetXaxis()->FindBin(
+                  delta_phi);
+          auto theta_bin =
+              h3_npart_delta_phi_theta_centrality_->GetYaxis()->FindBin(
+                  mom4.Theta());
+          auto c_bin =
+              h3_npart_delta_phi_theta_centrality_->GetZaxis()->FindBin(
+                  centrality);
+          auto n_tracks = h3_npart_delta_phi_theta_centrality_->GetBinContent(
+              dphi_bin, theta_bin, c_bin);
+          auto eff = 0.98 - c_eff_pi_pos * pow(n_tracks, 1);
+          if (eff > 0.1)
+            occupancy_weight = 1.0 / eff;
+          c_eff = c_eff_pi_pos;
+        }
       }
       auto out_particle = out_tracks_->NewChannel();
       out_particle.CopyContents(in_track);
@@ -245,7 +264,7 @@ void TracksProcessor::LoopRecTracks() {
       out_particle[out_c_eff_var_] = (float)c_eff;
       out_particle.DataT<Particle>()->SetMass(mass);
     }
-    c_eff_pi_neg+=0.002;
+    c_eff_pi_pos+=0.02;
   }
 }
 void TracksProcessor::LoopSimParticles() {
