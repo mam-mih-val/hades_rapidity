@@ -157,114 +157,112 @@ void TracksProcessor::LoopRecTracks() {
   float y_beam = data_header_->GetBeamRapidity();
   double c_eff_protons = 0.0045;
   double c_eff_pi_neg = 0.05;
-  double c_eff_pi_pos = 0.025;
-  while( c_eff_pi_pos < 0.07 ) {
-    for (auto in_track : in_tracks_->Loop()) {
-      auto pid = in_track.DataT<Particle>()->GetPid();
-      auto mass = in_track.DataT<Particle>()->GetMass();
-      if (pid != 0) {
-        if (TDatabasePDG::Instance()->GetParticle(pid))
-          mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
-      }
-      auto mom4 = in_track.DataT<Particle>()->Get4MomentumByMass(mass);
-      auto pT = mom4.Pt();
-      auto p = mom4.P();
-      auto pz = mom4.Pz();
-      auto theta = mom4.Theta();
-      float y = mom4.Rapidity();
-      float y_cm = y - y_beam;
-      TH2F *efficiency_histogram{nullptr};
-      float efficiency{1.0};
-      if (pid == 211) {
-        efficiency_histogram = centrality_class < efficiency_pi_plus_.size()
-                                   ? efficiency_pi_plus_.at(centrality_class)
-                                   : nullptr;
+  double c_eff_pi_pos = 0.05;
+
+  for (auto in_track : in_tracks_->Loop()) {
+    auto pid = in_track.DataT<Particle>()->GetPid();
+    auto mass = in_track.DataT<Particle>()->GetMass();
+    if (pid != 0) {
+      if (TDatabasePDG::Instance()->GetParticle(pid))
+        mass = TDatabasePDG::Instance()->GetParticle(pid)->Mass();
+    }
+    auto mom4 = in_track.DataT<Particle>()->Get4MomentumByMass(mass);
+    auto pT = mom4.Pt();
+    auto p = mom4.P();
+    auto pz = mom4.Pz();
+    auto theta = mom4.Theta();
+    float y = mom4.Rapidity();
+    float y_cm = y - y_beam;
+    TH2F *efficiency_histogram{nullptr};
+    float efficiency{1.0};
+    if (pid == 211) {
+      efficiency_histogram = centrality_class < efficiency_pi_plus_.size()
+                                 ? efficiency_pi_plus_.at(centrality_class)
+                                 : nullptr;
+    }
+    if (pid == -211) {
+      efficiency_histogram = centrality_class < efficiency_pi_minus_.size()
+                                 ? efficiency_pi_minus_.at(centrality_class)
+                                 : nullptr;
+    }
+    if (pid == 2212) {
+      efficiency_histogram = centrality_class < efficiency_protons_.size()
+                                 ? efficiency_protons_.at(centrality_class)
+                                 : nullptr;
+    }
+    if (efficiency_histogram) {
+      auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_cm);
+      auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
+      efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
+    }
+    auto occupancy_weight = 0.0;
+    auto c_eff=0.0;
+    if (h3_npart_delta_phi_theta_centrality_) {
+      if (pid == 2212) {
+        auto delta_phi = AngleDifference(mom4.Phi(), psi_ep);
+        auto dphi_bin =
+            h3_npart_delta_phi_theta_centrality_->GetXaxis()->FindBin(
+                delta_phi);
+        auto theta_bin =
+            h3_npart_delta_phi_theta_centrality_->GetYaxis()->FindBin(
+                mom4.Theta());
+        auto c_bin =
+            h3_npart_delta_phi_theta_centrality_->GetZaxis()->FindBin(
+                centrality);
+        auto n_tracks = h3_npart_delta_phi_theta_centrality_->GetBinContent(
+            dphi_bin, theta_bin, c_bin);
+        auto eff = 0.98 - c_eff_protons * pow(n_tracks, 2);
+        if (eff > 0.1)
+          occupancy_weight = 1.0 / eff;
+        c_eff = c_eff_protons;
       }
       if (pid == -211) {
-        efficiency_histogram = centrality_class < efficiency_pi_minus_.size()
-                                   ? efficiency_pi_minus_.at(centrality_class)
-                                   : nullptr;
+        auto delta_phi = AngleDifference(mom4.Phi(), psi_ep);
+        auto dphi_bin =
+            h3_npart_delta_phi_theta_centrality_->GetXaxis()->FindBin(
+                delta_phi);
+        auto theta_bin =
+            h3_npart_delta_phi_theta_centrality_->GetYaxis()->FindBin(
+                mom4.Theta());
+        auto c_bin =
+            h3_npart_delta_phi_theta_centrality_->GetZaxis()->FindBin(
+                centrality);
+        auto n_tracks = h3_npart_delta_phi_theta_centrality_->GetBinContent(
+            dphi_bin, theta_bin, c_bin);
+        auto eff = 0.98 - c_eff_pi_neg * pow(n_tracks, 1);
+        if (eff > 0.1)
+          occupancy_weight = 1.0 / eff;
+        c_eff = c_eff_pi_neg;
       }
-      if (pid == 2212) {
-        efficiency_histogram = centrality_class < efficiency_protons_.size()
-                                   ? efficiency_protons_.at(centrality_class)
-                                   : nullptr;
+      if (pid == 211) {
+        auto delta_phi = AngleDifference(mom4.Phi(), psi_ep);
+        auto dphi_bin =
+            h3_npart_delta_phi_theta_centrality_->GetXaxis()->FindBin(
+                delta_phi);
+        auto theta_bin =
+            h3_npart_delta_phi_theta_centrality_->GetYaxis()->FindBin(
+                mom4.Theta());
+        auto c_bin =
+            h3_npart_delta_phi_theta_centrality_->GetZaxis()->FindBin(
+                centrality);
+        auto n_tracks = h3_npart_delta_phi_theta_centrality_->GetBinContent(
+            dphi_bin, theta_bin, c_bin);
+        auto eff = 0.98 - c_eff_pi_pos * pow(n_tracks, 1);
+        if (eff > 0.1)
+          occupancy_weight = 1.0 / eff;
+        c_eff = c_eff_pi_pos;
       }
-      if (efficiency_histogram) {
-        auto bin_y = efficiency_histogram->GetXaxis()->FindBin(y_cm);
-        auto bin_pT = efficiency_histogram->GetYaxis()->FindBin(pT);
-        efficiency = efficiency_histogram->GetBinContent(bin_y, bin_pT);
-      }
-      auto occupancy_weight = 0.0;
-      auto c_eff=0.0;
-      if (h3_npart_delta_phi_theta_centrality_) {
-        if (pid == 2212) {
-          auto delta_phi = AngleDifference(mom4.Phi(), psi_ep);
-          auto dphi_bin =
-              h3_npart_delta_phi_theta_centrality_->GetXaxis()->FindBin(
-                  delta_phi);
-          auto theta_bin =
-              h3_npart_delta_phi_theta_centrality_->GetYaxis()->FindBin(
-                  mom4.Theta());
-          auto c_bin =
-              h3_npart_delta_phi_theta_centrality_->GetZaxis()->FindBin(
-                  centrality);
-          auto n_tracks = h3_npart_delta_phi_theta_centrality_->GetBinContent(
-              dphi_bin, theta_bin, c_bin);
-          auto eff = 0.98 - c_eff_protons * pow(n_tracks, 2);
-          if (eff > 0.1)
-            occupancy_weight = 1.0 / eff;
-          c_eff = c_eff_protons;
-        }
-        if (pid == -211) {
-          auto delta_phi = AngleDifference(mom4.Phi(), psi_ep);
-          auto dphi_bin =
-              h3_npart_delta_phi_theta_centrality_->GetXaxis()->FindBin(
-                  delta_phi);
-          auto theta_bin =
-              h3_npart_delta_phi_theta_centrality_->GetYaxis()->FindBin(
-                  mom4.Theta());
-          auto c_bin =
-              h3_npart_delta_phi_theta_centrality_->GetZaxis()->FindBin(
-                  centrality);
-          auto n_tracks = h3_npart_delta_phi_theta_centrality_->GetBinContent(
-              dphi_bin, theta_bin, c_bin);
-          auto eff = 0.98 - c_eff_pi_neg * pow(n_tracks, 1);
-          if (eff > 0.1)
-            occupancy_weight = 1.0 / eff;
-          c_eff = c_eff_pi_neg;
-        }
-        if (pid == 211) {
-          auto delta_phi = AngleDifference(mom4.Phi(), psi_ep);
-          auto dphi_bin =
-              h3_npart_delta_phi_theta_centrality_->GetXaxis()->FindBin(
-                  delta_phi);
-          auto theta_bin =
-              h3_npart_delta_phi_theta_centrality_->GetYaxis()->FindBin(
-                  mom4.Theta());
-          auto c_bin =
-              h3_npart_delta_phi_theta_centrality_->GetZaxis()->FindBin(
-                  centrality);
-          auto n_tracks = h3_npart_delta_phi_theta_centrality_->GetBinContent(
-              dphi_bin, theta_bin, c_bin);
-          auto eff = 0.98 - c_eff_pi_pos * pow(n_tracks, 1);
-          if (eff > 0.1)
-            occupancy_weight = 1.0 / eff;
-          c_eff = c_eff_pi_pos;
-        }
-      }
-      auto out_particle = out_tracks_->NewChannel();
-      out_particle.CopyContents(in_track);
-      out_particle[out_ycm_var_] = y_cm;
-      out_particle[out_theta_var_] = (float)theta;
-      out_particle[out_efficiency_var_] =
-          efficiency > 0.3f ? 1.0f / efficiency : 0.0f;
-      out_particle[out_occ_weight_var_] = occupancy_weight;
-      out_particle[out_fabs_pid_var_] = (int)abs(pid);
-      out_particle[out_c_eff_var_] = (float)c_eff;
-      out_particle.DataT<Particle>()->SetMass(mass);
     }
-    c_eff_pi_pos+=0.01;
+    auto out_particle = out_tracks_->NewChannel();
+    out_particle.CopyContents(in_track);
+    out_particle[out_ycm_var_] = y_cm;
+    out_particle[out_theta_var_] = (float)theta;
+    out_particle[out_efficiency_var_] =
+        efficiency > 0.3f ? 1.0f / efficiency : 0.0f;
+    out_particle[out_occ_weight_var_] = occupancy_weight;
+    out_particle[out_fabs_pid_var_] = (int)abs(pid);
+    out_particle[out_c_eff_var_] = (float)c_eff;
+    out_particle.DataT<Particle>()->SetMass(mass);
   }
 }
 void TracksProcessor::LoopSimParticles() {
