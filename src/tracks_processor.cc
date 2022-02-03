@@ -157,7 +157,7 @@ void TracksProcessor::LoopRecTracks() {
   float y_beam = data_header_->GetBeamRapidity();
   double c_eff_protons = 0.0045;
   double c_eff_pi_neg = 0.05;
-  double c_eff_pi_pos = 0.01;
+  double c_eff_pi_pos = 0.005;
   while( c_eff_pi_pos < 0.101 ) {
     for (auto in_track : in_tracks_->Loop()) {
       auto pid = in_track.DataT<Particle>()->GetPid();
@@ -264,7 +264,7 @@ void TracksProcessor::LoopRecTracks() {
       out_particle[out_c_eff_var_] = (float)c_eff;
       out_particle.DataT<Particle>()->SetMass(mass);
     }
-    c_eff_pi_pos+=0.02;
+    c_eff_pi_pos+=0.01;
   }
 }
 void TracksProcessor::LoopSimParticles() {
