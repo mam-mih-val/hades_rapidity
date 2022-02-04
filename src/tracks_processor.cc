@@ -147,9 +147,6 @@ void TracksProcessor::LoopRecTracks() {
   auto psi_ep = 0.0;
   if (dc_qvector_) {
     auto qvec = dc_qvector_->At(0);
-    auto mag = qvec.mag(1);
-    if (fabs(mag) < std::numeric_limits<double>::min())
-      return;
     auto x_qvec = qvec.x(1);
     auto y_qvec = qvec.y(1);
     psi_ep = atan2(y_qvec, x_qvec);
