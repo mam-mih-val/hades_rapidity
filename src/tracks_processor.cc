@@ -156,8 +156,8 @@ void TracksProcessor::LoopRecTracks() {
 //  double c_eff_pi_neg = 0.05;
 //  double c_eff_pi_pos = 0.05;
   double c_eff_protons = 0.00;
-  double c_eff_pi_neg = 0.00;
-  double c_eff_pi_pos = 0.00;
+  double c_eff_pi_neg = 0.02;
+  double c_eff_pi_pos = 0.02;
 
   for( int opt_step=0; opt_step<10; ++opt_step ) {
     for (auto in_track : in_tracks_->Loop()) {
@@ -265,9 +265,9 @@ void TracksProcessor::LoopRecTracks() {
       out_particle[out_c_eff_var_] = (float)c_eff;
       out_particle.DataT<Particle>()->SetMass(mass);
     }
-    c_eff_protons += 0.001;
-    c_eff_pi_neg += 0.01;
-    c_eff_pi_pos += 0.01;
+    c_eff_protons += 0.0005;
+    c_eff_pi_neg += 0.005;
+    c_eff_pi_pos += 0.005;
   }
 }
 void TracksProcessor::LoopSimParticles() {
