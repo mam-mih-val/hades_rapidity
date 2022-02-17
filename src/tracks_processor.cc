@@ -159,7 +159,7 @@ void TracksProcessor::LoopRecTracks() {
   double c_eff_pi_neg = 0.02;
   double c_eff_pi_pos = 0.02;
 
-  for( int opt_step=0; opt_step<10; ++opt_step ) {
+  for( int opt_step=0; opt_step<1; ++opt_step ) {
     for (auto in_track : in_tracks_->Loop()) {
       auto pid = in_track.DataT<Particle>()->GetPid();
       auto mass = in_track.DataT<Particle>()->GetMass();
